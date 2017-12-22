@@ -93,7 +93,7 @@ class User_model extends CI_Model {
     $query = $this->db->query($sql, array($name, $email, substr(hash('sha256', $password), -50)));
     if($query > 0) {
       $this->session->user = array(
-        'uid' => $this->db->insert_id(),
+        'uid' => strval($this->db->insert_id()),
         'name' => $name,
         'email' => $email,
         'avatar' => '/static/avatar/avatar.jpg'

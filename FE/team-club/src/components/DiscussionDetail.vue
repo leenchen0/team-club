@@ -57,11 +57,11 @@ export default {
   data() {
     return {
       discussion: {
-        topic: 'Topic',
-        description: 'R.T.',
-        date: '12月7日',
-        name: 'Pencil',
-        avatar: '/static/img/avatar.f7270b8.jpg',
+        topic: '',
+        description: '',
+        date: '',
+        name: '',
+        avatar: '',
       },
       events: [],
       showEditDiscussion: false,

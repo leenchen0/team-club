@@ -17,7 +17,7 @@
         <img width="48" height="48" :src="event.avatar" alt="avatar" class="avatar">
         <span>
           <router-link class="link" :to="{ name: 'UserInfo', params: { uid: event.uid, path: path } }">
-            陈林
+            {{ event.name }}
           </router-link>
           {{ getInfo(event.type, event.table) }}：
           <router-link :to="getRouterLink(event)" class="link">{{ event.ename }}</router-link>

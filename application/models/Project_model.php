@@ -67,13 +67,21 @@ class Project_model extends CI_Model {
   }
 
   public function getInfo($pid) {
-    $uid = $this->session->user['uid'];
     // 获取项目信息
-    $sql = "SELECT dir_id as dirId, doc_dir_id as docDirId, name, description FROM Project p, TeamMember tm WHERE pid = ? AND p.tid = tm.tid AND tm.uid = ? AND (private = 0 || (tm.accept = 1))";
-    $query = $this->db->query($sql, array($pid, $uid));
+    $sql = "SELECT dir_id as dirId, doc_dir_id as docDirId, name, description, private, tid FROM Project WHERE pid = ?";
+    $query = $this->db->query($sql, array($pid));
     $project = $query->row();
     if (!isset($project)) {
-      return '获取信息失败';
+      return array('error' => '获取信息失败');
+    }
+    // 检查是否有权限查看项目
+    if ($project->private === '1') {
+      $uid = $this->session->user['uid'];
+      $sql = "SELECT uid FROM TeamMember WHERE tid = ? AND uid = ? AND accept = 1";
+      $query = $this->db->query($sql, array($project->tid, $uid));
+      if ($query->num_rows() <= 0) {
+        return array('error' => '权限不足');
+      }
     }
     // 获取未完成任务列表
     $sql = "SELECT task_id as taskId, task_list_id as taskListId, name, doing, uid, finished FROM Task WHERE pid = ? AND deleted = 0 AND finished is null";

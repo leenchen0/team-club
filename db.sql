@@ -615,6 +615,7 @@ INSERT INTO TaskEvent (uid, type, task_id) VALUES (u, 'create', taskId);
 IF (tli > 0) THEN
 INSERT INTO TaskListEvent (uid, type, task_list_id, info) VALUES (u, 'createTask', tli, n);
 END IF;
+SELECT taskId;
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;

@@ -105,8 +105,12 @@ class Task_model extends CI_Model {
 
     $uid = $this->session->user['uid'];
     $sql = "CALL create_task(?, ?, ?, ?)";
-    $this->db->query($sql, array($pid, $taskListId, $name, $uid));
-    return array('error' => null);
+    $query = $this->db->query($sql, array($pid, $taskListId, $name, $uid));
+    $row = $query->row();
+    if (!isset($row)) {
+      return array('error' => '创建失败');
+    }
+    return array('error' => null, 'data' => $row->taskId);
   }
 
   public function delete($taskId) {

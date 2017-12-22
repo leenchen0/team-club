@@ -55,7 +55,9 @@ class User_model extends CI_Model {
     $query = $this->db->query($sql, array($path, $uid));
     if($query > 0){
       // 更新 session 数据
-      $this->session->user['avatar'] = $path;
+      $user = $this->session->user;
+      $user['avatar'] = $path;
+      $this->session->user = $user;
       return null;
     }
     return '更换头像失败';
@@ -71,8 +73,10 @@ class User_model extends CI_Model {
     $query = $this->db->query($sql, array($name, $email, $user['uid']));
     if ($query > 0) {
       // 更新 session 数据
-      $this->session->user['name'] = $name;
-      $this->session->user['email'] = $email;
+      $user = $this->session->user;
+      $user['name'] = $name;
+      $user['email'] = $email;
+      $this->session->user = $user;
       return null;
     }
     return '更新名字失败';

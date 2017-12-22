@@ -1,7 +1,21 @@
 <template>
   <div>
     <div>
-      <h3 class="module-name">文档</h3>
+      <el-breadcrumb separator=">" v-if="id === $route.params.doc_dir_id">
+        <el-breadcrumb-item
+          v-for="dir in parent"
+          :key="dir.doc_dir_id"
+          :to="{ name: 'DocumentBrowser', params: { doc_dir_id: dir.doc_dir_id, path: path } }">
+          {{ dir.name }}
+        </el-breadcrumb-item>
+      </el-breadcrumb>
+      <h3 class="module-name">
+        {{
+          id === $route.params.doc_dir_id ? 
+          (parent.length > 0 ? parent[parent.length - 1].name : 'Loading') : 
+          '文档'
+        }}
+      </h3>
       <el-dropdown
         split-button
         type="primary"
@@ -22,12 +36,14 @@
           :key="dir.doc_dir_id"
           :dir="dir"
           :onDeleteDir="deleteDir"
+          :path="path"
         />
         <doc-item
           v-for="doc in docs"
           :key="doc.doc_id"
           :doc="doc"
           :onDeleteDoc="deleteDoc"
+          :path="path"
         />
       </div>
     </div>
@@ -37,14 +53,38 @@
 <script>
 import DocDirItem from './DocDirItem';
 import DocItem from './DocItem';
+import * as service from '../service';
 
 export default {
   name: 'DocumentBrowser',
+  props: ['docDirId', 'name'],
+  created() {
+    this.getDocList();
+  },
   data() {
     return {
       docs: [],
       dirs: [],
+      parent: [],
     };
+  },
+  computed: {
+    id() {
+      return this.docDirId || this.$route.params.doc_dir_id;
+    },
+    path() {
+      const oldPath = JSON.parse(JSON.stringify(this.$route.params.path || []));
+      if (this.name) {
+        oldPath.push({
+          name: this.name,
+          params: {
+            name: this.$route.name,
+            params: JSON.parse(JSON.stringify(this.$route.params)),
+          },
+        });
+      }
+      return oldPath;
+    },
   },
   methods: {
     createDoc() {
@@ -54,9 +94,16 @@ export default {
         inputPattern: /.+/,
         inputErrorMessage: '文档名不可为空',
       }).then(({ value }) => {
-        this.docs.push({
-          doc_id: 1,
-          name: value,
+        service.createDoc(this.id, value).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          this.docs.push({
+            doc_id: data.data,
+            name: value,
+          });
+        }).catch((err) => {
+          this.$message.error(err.message);
         });
       }).catch(() => { });
     },
@@ -67,9 +114,16 @@ export default {
         inputPattern: /.+/,
         inputErrorMessage: '文档夹名不可为空',
       }).then(({ value }) => {
-        this.dirs.push({
-          doc_dir_id: 1,
-          name: value,
+        service.createDocDir(this.id, value).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          this.dirs.push({
+            doc_dir_id: data.data,
+            name: value,
+          });
+        }).catch((err) => {
+          this.$message.error(err.message);
         });
       }).catch(() => { });
     },
@@ -86,8 +140,15 @@ export default {
         cancelButtonText: '取消',
         type: 'warning',
       }).then(() => {
-        const i = this.dirs.indexOf(dir);
-        this.dirs.splice(i, 1);
+        service.deleteDocDir(dir.doc_dir_id).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          const i = this.dirs.indexOf(dir);
+          this.dirs.splice(i, 1);
+        }).catch((err) => {
+          this.$message.error(err.message);
+        });
       }).catch(() => { });
     },
     deleteDoc(doc) {
@@ -96,14 +157,40 @@ export default {
         cancelButtonText: '取消',
         type: 'warning',
       }).then(() => {
-        const i = this.docs.indexOf(doc);
-        this.docs.splice(i, 1);
+        service.deleteDoc(doc.doc_id).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          const i = this.docs.indexOf(doc);
+          this.docs.splice(i, 1);
+        }).catch((err) => {
+          this.$message.error(err.message);
+        });
       }).catch(() => { });
+    },
+    getDocList() {
+      if (this.id) {
+        service.getDocDirInfo(this.id).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          this.dirs = data.data.dirs;
+          this.docs = data.data.docs;
+          this.parent = data.data.parent;
+        }).catch((err) => {
+          this.$message.error(err.message);
+        });
+      }
     },
   },
   components: {
     DocItem,
     DocDirItem,
+  },
+  watch: {
+    id() {
+      this.getDocList();
+    },
   },
 };
 </script>

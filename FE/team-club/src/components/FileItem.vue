@@ -5,7 +5,7 @@
     <i style="padding: 20px 50px; display: block; font-size: 5em;" class="el-icon-document"></i>
     <span :title="file.name" class="item-name">{{ file.name }}</span>
     <div class="operation">
-      <a :href="file.link" :download="file.name"><el-button type="text">下载</el-button></a>
+      <a :href="file.path" :download="file.name"><el-button type="text">下载</el-button></a>
       <el-button type="text" @click="handleDelete">删除</el-button>
     </div>
   </div>

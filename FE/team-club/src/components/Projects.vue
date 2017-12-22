@@ -19,54 +19,47 @@
 
 <script>
 import ProjectItem from './ProjectItem';
+import * as service from '../service';
 
 export default {
   name: 'Project',
+  created() {
+    this.getProjects(this.$route.params.tid);
+  },
+  beforeRouteUpdate(to, from, next) {
+    if (to.params.tid !== from.params.tid) {
+      this.getProjects(to.params.tid);
+    }
+    next();
+  },
   data() {
     return {
-      projectList: [
-        {
-          pid: 1,
-          name: 'Team',
-          icon: 2,
-          color: 5,
-        },
-        {
-          pid: 2,
-          name: 'Club',
-          icon: 1,
-          color: 3,
-        },
-        {
-          pid: 3,
-          name: 'cf-dispatching',
-          icon: 3,
-          color: 1,
-        },
-        {
-          pid: 3,
-          name: 'cf-dispatching',
-          icon: 3,
-          color: 1,
-        },
-        {
-          pid: 3,
-          name: 'cf-dispatching',
-          icon: 3,
-          color: 1,
-        },
-      ],
+      projectList: [],
       handleChangeIcon: (project, iconIndex) => {
-        const i = this.projectList.indexOf(project);
-        if (i > -1) {
-          this.projectList[i].icon = iconIndex;
-        }
+        service.setProjectIcon(project.pid, iconIndex).then((data) => {
+          if (data.error) {
+            throw Error('更新图标失败');
+          }
+          const i = this.projectList.indexOf(project);
+          if (i > -1) {
+            this.projectList[i].icon = iconIndex;
+          }
+        }).catch(() => {
+          this.$message.error('更新图标失败');
+        });
       },
       handleChangeColor: (project, colorIndex) => {
-        const i = this.projectList.indexOf(project);
-        if (i > -1) {
-          this.projectList[i].color = colorIndex;
-        }
+        service.setProjectColor(project.pid, colorIndex).then((data) => {
+          if (data.error) {
+            throw Error('更新颜色失败');
+          }
+          const i = this.projectList.indexOf(project);
+          if (i > -1) {
+            this.projectList[i].color = colorIndex;
+          }
+        }).catch(() => {
+          this.$message.error('更新颜色失败');
+        });
       },
     };
   },
@@ -78,8 +71,25 @@ export default {
         inputPattern: /.+/,
         inputErrorMessage: '项目名不可为空',
       }).then(({ value }) => {
-        this.projectList.push({ pid: 1, name: value, icon: 0, color: 0 });
+        service.createProject(this.$route.params.tid, value).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          this.projectList.push({ pid: data.data, name: value, icon: 0, color: 0 });
+        }).catch(() => {
+          this.$message.error('创建失败!');
+        });
       }).catch(() => { });
+    },
+    getProjects(tid) {
+      service.getProjects(tid).then((data) => {
+        if (data.error) {
+          throw Error(data.error);
+        }
+        this.projectList = data.data;
+      }).catch(() => {
+        this.$message.error('获取项目列表失败!');
+      });
     },
   },
   components: {

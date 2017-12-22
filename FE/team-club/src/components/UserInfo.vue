@@ -1,9 +1,15 @@
 <template>
   <div>
     <div class="userinfo-header">
-      <img class="avatar" src="../assets/avatar.jpg" alt="avatar" width="80">
-      <h2 style="margin: 0; padding: 0;">Username</h2>
-      <p class="tips">9807175@qq.com</p>
+      <img
+        style="float: left; padding-left: 10px; padding-right: 20px;"
+        class="avatar"
+        width="80"
+        height="80"
+        :src="user.avatar"
+        alt="avatar">
+      <h2 style="margin: 0; padding: 0;">{{ user.name }}</h2>
+      <p class="tips">{{ user.email }}</p>
     </div>
     <ul class="userinfo-nav">
       <li class="activate">任务</li>
@@ -16,7 +22,9 @@
         :onBeginTask="onBeginTask"
         :onPauseTask="onPauseTask"
         :onFinishTask="onFinishTask"
+        :members="members"
         :task="task"
+        :name="user.name"
         v-for="task in tasks"
         :key="task.task_id" />
     </div>
@@ -31,43 +39,23 @@
 <script>
 import Task from './Task';
 import router from '../router';
+import * as service from '../service';
 
 export default {
   name: 'UserInfo',
+  props: ['members'],
+  mounted() {
+    this.getUnfinishedTasks();
+  },
   data() {
     return {
-      tasks: [
-        {
-          task_id: 1,
-          name: 'task name1',
-          doing: false,
-          projectName: '项目名',
-        },
-        {
-          task_id: 2,
-          name: 'task name2',
-          doing: true,
-          projectName: '项目名2',
-        },
-        {
-          task_id: 3,
-          name: 'task name3',
-          doing: false,
-          projectName: '项目名2',
-        },
-        {
-          task_id: 4,
-          name: 'task name4',
-          doing: true,
-          projectName: '项目名3',
-        },
-        {
-          task_id: 5,
-          name: 'task name5',
-          doing: true,
-          projectName: '项目名',
-        },
-      ],
+      user: {
+        uid: '',
+        name: '',
+        email: '',
+        avatar: '',
+      },
+      tasks: [],
       onDeleteTask: (task) => {
         const i = this.tasks.indexOf(task);
         this.tasks.splice(i, 1);
@@ -78,11 +66,11 @@ export default {
       },
       onBeginTask: (task) => {
         const i = this.tasks.indexOf(task);
-        this.tasks[i].doing = true;
+        this.tasks[i].doing = '1';
       },
       onPauseTask: (task) => {
         const i = this.tasks.indexOf(task);
-        this.tasks[i].doing = false;
+        this.tasks[i].doing = '0';
       },
       onFinishTask: (task) => {
         const i = this.tasks.indexOf(task);
@@ -95,7 +83,27 @@ export default {
   },
   methods: {
     viewFinishedTasks() {
-      router.push({ name: 'FinishedTasks', params: { uid: this.$route.params.uid } });
+      const oldPath = JSON.parse(JSON.stringify(this.$route.params.path || []));
+      oldPath.push({
+        name: this.user.name,
+        params: {
+          name: this.$route.name,
+          params: JSON.parse(JSON.stringify(this.$route.params)),
+        },
+      });
+      router.push({ name: 'FinishedTasks', params: { uid: this.$route.params.uid, path: oldPath } });
+    },
+    getUnfinishedTasks() {
+      const { tid, uid } = this.$route.params;
+      service.getUnfinishedTasks(tid, uid).then((data) => {
+        if (data.error) {
+          throw Error(data.error);
+        }
+        this.tasks = data.data.tasks;
+        this.user = data.data.user;
+      }).catch((err) => {
+        this.$message.error(err.message);
+      });
     },
   },
 };
@@ -105,15 +113,9 @@ export default {
 .userinfo-header {
   overflow: hidden;
 }
-.avatar {
-  border-radius: 50%;
-  float: left;
-  padding-left: 10px;
-  padding-right: 20px;
-}
 .userinfo-nav {
   list-style: none;
-  margin: 0;
+  margin: 15px 0;
   padding: 8px 0;
   border-top: 1px solid #eee;
   border-bottom: 1px solid #eee;

@@ -18,10 +18,17 @@ import ArchivedTaskList from '@/components/ArchivedTaskList';
 import TaskDetail from '@/components/TaskDetail';
 import DiscussionDetail from '@/components/DiscussionDetail';
 import TaskListDetail from '@/components/TaskListDetail';
+import ApplyTeam from '@/components/ApplyTeam';
+import ProjectSettings from '@/components/ProjectSettings';
+import EditHistory from '@/components/EditHistory';
+import ViewDocument from '@/components/ViewDocument';
+import Dynamic from '@/components/Dynamic';
+
+import store from '../store';
 
 Vue.use(Router);
 
-export default new Router({
+const router = new Router({
   routes: [
     {
       path: '/',
@@ -44,6 +51,11 @@ export default new Router({
       redirect: '/team/:tid/projects',
       children: [
         {
+          path: 'dynamic',
+          name: 'Dynamic',
+          component: Dynamic,
+        },
+        {
           path: 'projects',
           name: 'Projects',
           component: Projects,
@@ -62,6 +74,11 @@ export default new Router({
           path: 'userInfo/:uid',
           name: 'UserInfo',
           component: UserInfo,
+        },
+        {
+          path: 'task/:task_id',
+          name: 'TaskDetail',
+          component: TaskDetail,
         },
         {
           path: 'settings',
@@ -89,14 +106,14 @@ export default new Router({
           component: TaskListDetail,
         },
         {
-          path: 'project/:pid/task/:task_id',
-          name: 'TaskDetail',
-          component: TaskDetail,
-        },
-        {
           path: 'project/:pid/discussion/:did',
           name: 'DiscussionDetail',
           component: DiscussionDetail,
+        },
+        {
+          path: 'project/:pid/settings',
+          name: 'ProjectSettings',
+          component: ProjectSettings,
         },
         {
           path: 'project/:pid',
@@ -118,7 +135,33 @@ export default new Router({
           name: 'DocumentEditor',
           component: DocumentEditor,
         },
+        {
+          path: 'editHistory/:doc_id',
+          name: 'EditHistory',
+          component: EditHistory,
+        },
+        {
+          path: 'viewDocument/:hid',
+          name: 'ViewDocument',
+          component: ViewDocument,
+        },
+        {
+          path: 'applyTeam',
+          name: 'ApplyTeam',
+          component: ApplyTeam,
+        },
       ],
     },
   ],
 });
+
+router.beforeEach((to, from, next) => {
+  // 为登录则先获取用户信息
+  if (store.state.user === null && to.name !== 'Login') {
+    store.dispatch('getUserInfo', next);
+  } else {
+    next();
+  }
+});
+
+export default router;

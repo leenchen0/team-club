@@ -13,18 +13,29 @@
 </template>
 
 <script>
+import * as service from '../service';
+import router from '../router';
+
 export default {
   name: 'Settings',
-  props: ['teamName'],
+  props: ['teamName', 'changeTeamName'],
   methods: {
     editTeamName() {
       this.$prompt('请输入新的团队名', '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
+        inputValue: this.teamName,
         inputPattern: /.+/,
         inputErrorMessage: '新团队名不可为空',
       }).then(({ value }) => {
-        this.name = value;
+        service.setName(this.$route.params.tid, value).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          this.changeTeamName(value);
+        }).catch((err) => {
+          this.$message.error(err.message);
+        });
       }).catch(() => { });
     },
     deleteTeam() {
@@ -33,9 +44,17 @@ export default {
         cancelButtonText: '取消',
         type: 'warning',
       }).then(() => {
-        this.$message({
-          type: 'success',
-          message: '删除成功!',
+        service.deleteTeam(this.$route.params.tid).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          this.$message({
+            type: 'success',
+            message: '删除成功!',
+          });
+          router.push({ name: 'Launchpad' });
+        }).catch((err) => {
+          this.$message.error(err.message);
         });
       }).catch(() => { });
     },

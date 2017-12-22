@@ -1,12 +1,16 @@
 <template>
   <div>
-    <h2>Pencil 已完成的任务</h2>
+    <h3>{{ title }}</h3>
     <div class="date-container" v-for="date in dateSet" :key="date">
       <span class="date-label">{{ date }}</span>
       <div class="tasks-container">
-        <div style="margin-bottom: 10px;" v-for="task in tasks[date]" :key="task.task_id">
+        <div style="margin-bottom: 10px;" v-for="task in tasks[date]" :key="task.taskId">
           <i class="el-icon-check finished-icon"></i>
-          <router-link class="task-link" :to="'/team/1'">{{ task.name }}</router-link>
+          <router-link
+            class="task-link"
+            :to="{ name: 'TaskDetail', params: { task_id: task.taskId, path: path } }">
+            {{ task.name }}
+          </router-link>
         </div>
       </div>
     </div>
@@ -14,37 +18,71 @@
 </template>
 
 <script>
+import * as service from '../service';
+
 export default {
   name: 'FinishedTasks',
+  mounted() {
+    this.getFinishedTasks();
+  },
   data() {
     return {
-      tasks: {
-        '11/11': [
-          {
-            task_id: 1,
-            name: '支持站点输入',
-          },
-          {
-            task_id: 1,
-            name: '支持站点输入',
-          },
-        ],
-        '11/9': [
-          {
-            task_id: 1,
-            name: '支持站点输入',
-          },
-          {
-            task_id: 1,
-            name: '支持站点输入',
-          },
-        ],
+      unsortedTasks: {},
+      user: {
+        uid: '',
+        name: '',
+        email: '',
+        avatar: '',
       },
     };
   },
   computed: {
+    title() {
+      return `${this.user.name} 已完成的任务`;
+    },
+    path() {
+      const oldPath = JSON.parse(JSON.stringify(this.$route.params.path || []));
+      oldPath.push({
+        name: this.title,
+        params: {
+          name: this.$route.name,
+          params: JSON.parse(JSON.stringify(this.$route.params)),
+        },
+      });
+      return oldPath;
+    },
     dateSet() {
-      return Object.keys(this.tasks);
+      return this.tasks ? Object.keys(this.tasks) : [];
+    },
+    tasks() {
+      const res = {};
+      const { unsortedTasks } = this;
+      for (let i = 0; i < unsortedTasks.length; ++i) {
+        const date = new Date(unsortedTasks[i].finished);
+        const dateStr = `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+        if (!res[dateStr]) {
+          res[dateStr] = [
+            unsortedTasks[i],
+          ];
+        } else {
+          res[dateStr].push(unsortedTasks[i]);
+        }
+      }
+      return res;
+    },
+  },
+  methods: {
+    getFinishedTasks() {
+      const { tid, uid } = this.$route.params;
+      service.getFinishedTasks(tid, uid).then((data) => {
+        if (data.error) {
+          throw Error(data.error);
+        }
+        this.unsortedTasks = data.data.tasks;
+        this.user = data.data.user;
+      }).catch((err) => {
+        this.$message.error(err.message);
+      });
     },
   },
 };
@@ -53,8 +91,8 @@ export default {
 <style lang="scss">
 .date-label {
   float: left;
-  width: 100px;
-  font-size: 1.5em;
+  width: 120px;
+  font-size: 1.2em;
 }
 .date-container {
   padding: 10px 0;

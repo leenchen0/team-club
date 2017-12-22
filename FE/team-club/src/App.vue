@@ -59,4 +59,17 @@ a {
 .avatar {
   border-radius: 50%;
 }
+.forbid-mask {
+  z-index: 100;
+  position: absolute;
+  width: calc(100% + 60px);
+  height: calc(100% + 100px);
+  top: -30px;
+  left: -30px;
+  background-color: rgba(88, 88, 88, 0.5);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 </style>

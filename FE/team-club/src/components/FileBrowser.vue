@@ -1,7 +1,21 @@
 <template>
   <div>
     <div>
-      <h3 class="module-name">文件</h3>
+      <el-breadcrumb v-if="id === $route.params.dir_id" separator=">">
+        <el-breadcrumb-item
+          v-for="dir in parent"
+          :key="dir.dir_id"
+          :to="{ name: 'FileBrowser', params: { dir_id: dir.dir_id, path: path } }">
+          {{ dir.name }}
+        </el-breadcrumb-item>
+      </el-breadcrumb>
+      <h3 class="module-name">
+        {{
+          id === $route.params.dir_id ? 
+          (parent.length > 0 ? parent[parent.length - 1].name : 'Loading' ) : 
+          '文件'
+        }}
+      </h3>
       <el-dropdown
         split-button
         type="primary"
@@ -23,6 +37,7 @@
           :key="dir.dir_id"
           :dir="dir"
           :onDeleteDir="deleteDir"
+          :path="path"
         />
         <file-item
           v-for="file in files"
@@ -38,15 +53,38 @@
 <script>
 import FileItem from './FileItem';
 import DirItem from './DirItem';
+import * as service from '../service';
 
 export default {
   name: 'FileBrowser',
-  props: ['dir'],
+  props: ['dirId', 'name'],
+  created() {
+    this.getFileList();
+  },
   data() {
     return {
       dirs: [],
       files: [],
+      parent: [],
     };
+  },
+  computed: {
+    id() {
+      return this.dirId || this.$route.params.dir_id;
+    },
+    path() {
+      const oldPath = JSON.parse(JSON.stringify(this.$route.params.path || []));
+      if (this.name) {
+        oldPath.push({
+          name: this.name,
+          params: {
+            name: this.$route.name,
+            params: JSON.parse(JSON.stringify(this.$route.params)),
+          },
+        });
+      }
+      return oldPath;
+    },
   },
   methods: {
     selectFile() {
@@ -59,9 +97,16 @@ export default {
         inputPattern: /.+/,
         inputErrorMessage: '文件夹名不可为空',
       }).then(({ value }) => {
-        this.dirs.push({
-          dir_id: 1,
-          name: value,
+        service.createDir(this.id, value).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          this.dirs.push({
+            dir_id: data.data,
+            name: value,
+          });
+        }).catch((err) => {
+          this.$message.error(err.message);
         });
       }).catch(() => { });
     },
@@ -75,10 +120,20 @@ export default {
     uploadFile(e) {
       const file = e.target.files[0];
       e.target.value = '';
-      this.files.push({
-        fid: 1,
-        name: file.name,
-        link: 'http://www.baidu.com',
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('dirId', this.id);
+      service.uploadFile(formData).then((data) => {
+        if (data.error) {
+          throw Error(data.error);
+        }
+        this.files.push({
+          fid: data.data.fid,
+          name: file.name,
+          path: data.data.path,
+        });
+      }).catch((err) => {
+        this.$message.error(err.message);
       });
     },
     deleteDir(dir) {
@@ -87,8 +142,15 @@ export default {
         cancelButtonText: '取消',
         type: 'warning',
       }).then(() => {
-        const i = this.dirs.indexOf(dir);
-        this.dirs.splice(i, 1);
+        service.deleteDir(dir.dir_id).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          const i = this.dirs.indexOf(dir);
+          this.dirs.splice(i, 1);
+        }).catch((err) => {
+          this.$message.error(err.message);
+        });
       }).catch(() => { });
     },
     deleteFile(file) {
@@ -97,14 +159,40 @@ export default {
         cancelButtonText: '取消',
         type: 'warning',
       }).then(() => {
-        const i = this.files.indexOf(file);
-        this.files.splice(i, 1);
+        service.deleteFile(file.fid).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          const i = this.files.indexOf(file);
+          this.files.splice(i, 1);
+        }).catch((err) => {
+          this.$message.error(err.message);
+        });
       }).catch(() => { });
+    },
+    getFileList() {
+      if (this.id) {
+        service.getDirInfo(this.id).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          this.dirs = data.data.dirs;
+          this.files = data.data.files;
+          this.parent = data.data.parent;
+        }).catch((err) => {
+          this.$message.error(err.message);
+        });
+      }
     },
   },
   components: {
     FileItem,
     DirItem,
+  },
+  watch: {
+    id() {
+      this.getFileList();
+    },
   },
 };
 </script>

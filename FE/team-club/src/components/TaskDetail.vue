@@ -1,47 +1,20 @@
 <template>
-  <div>
-    <div class="task-info">
-      <el-popover
-        placement="left"
-        width="150"
-        trigger="hover">
-        <div style="float: right;">
-          <i style="color: #eee;" class="icon-button el-icon-star-on"></i>
-          <i style="color: #eee;" class="icon-button el-icon-star-on"></i>
-          <el-button class="icon-button" type="text" icon="el-icon-delete" @click="handleOnDelete"></el-button>
-          <el-button v-if="finished === null" class="icon-button" type="text" icon="el-icon-edit" @click="handleOnEdit"></el-button>
-          <el-button v-if="finished === null" class="icon-button" type="text" :icon="doingIcon" @click="handleOnDoing"></el-button>
-        </div>
-        <div slot="reference" class="task-container">
-          <input @change="handleFinishTask" type="checkbox">
-          <span class="task-name" type="text">{{ name }}</span>
-          <el-popover
-            placement="right"
-            width="150"
-            trigger="click">
-            <div>
-              <p style="margin: 0; padding: 0; font-weight: 800;">将任务指派给</p>
-              <el-select @change="allocatingTask" v-model="user.uid" clearable placeholder="未指派任务" size="mini">
-                <el-option
-                  v-for="member in members"
-                  :key="member.uid"
-                  :label="member.name"
-                  :value="member.uid">
-                </el-option>
-              </el-select>
-            </div>
-            <el-tag
-              slot="reference"
-              size="small"
-              class="tag tag-clickable"
-              type="info">
-              {{ user ? user.name : '未指派' }}
-            </el-tag>
-          </el-popover>
-        </div>
-      </el-popover>
-      <p class="tips task-desc">{{ description }}</p>
-      <div style="margin-left: 25px; margin-top: 15px;">
+  <div style="position: relative">
+    <div class="forbid-mask" v-if="task.deleted === '1'">
+      <el-button type="warning" @click="recoverTask">该任务已被删除，点此恢复</el-button>
+    </div>
+    <div class="task-info" v-if="task.archived === null">
+      <task
+        :task="task"
+        :members="members"
+        :onBeginTask="onBeginTask"
+        :onPauseTask="onPauseTask"
+        :onEditTask="onEditTask"
+        :onDeleteTask="onDeleteTask"
+        :onFinishTask="onFinishTask"
+      />
+      <p class="tips task-desc">{{ task.description }}</p>
+      <div style="margin-left: 25px; margin-top: 15px;" v-if="task.finished === null && task.archived === null">
         <el-button type="primary" size="mini" plain @click="editTask">编辑</el-button>
         <el-button type="danger" size="mini" plain @click="handleOnDelete">删除</el-button>
       </div>
@@ -60,72 +33,53 @@
         </div>
       </el-dialog>
     </div>
+    <div class="task-info" v-else>
+      <input checked="true" type="checkbox" disabled>
+      <span class="task-name" type="text">{{ task.name }}</span>
+      <el-tag
+        slot="reference"
+        size="small"
+        class="tag"
+        type="info">
+        {{ currentUserName }}
+      </el-tag>
+    </div>
     <event-panel
+      table="任务"
       :events="events"
     />
     <comment
+      v-if="task.archived === null"
       :onSubmit="onSubmit"
     />
   </div>
 </template>
 
 <script>
+import { mapState } from 'vuex';
 import router from '../router';
 import EventPanel from './EventPanel';
 import Comment from './Comment';
+import Task from './Task';
+import * as service from '../service';
 
 export default {
   name: 'TaskDetail',
+  props: ['members'],
+  created() {
+    this.getTaskInfo();
+  },
   data() {
     return {
-      name: '添加评论功能',
-      description: '任务的详细描述',
-      user: {
-        uid: 1,
-        name: '嗯嗯',
+      task: {
+        name: '',
+        description: '',
+        uid: null,
+        finished: null,
+        doing: false,
+        deleted: '1',
       },
-      finished: null,
-      doing: false,
-      events: [
-        {
-          eid: 1,
-          type: 'comment',
-          info: 'asdasdasd',
-          user: {
-            name: 'Pencil',
-          },
-          date: Date.now(),
-        },
-        {
-          eid: 1,
-          type: 'delete',
-          info: '删除任务',
-          user: {
-            name: 'Pencil',
-          },
-          date: Date.now(),
-        },
-      ],
-      members: [
-        {
-          uid: 1,
-          name: 'Pencil',
-          avatar: '../assets/avatar.jpg',
-          email: '9807175@qq.com',
-        },
-        {
-          uid: 2,
-          name: 'Pencil2',
-          avatar: '../assets/avatar.jpg',
-          email: '98071725@qq.com',
-        },
-        {
-          uid: 3,
-          name: 'Pencil3',
-          avatar: '../assets/avatar.jpg',
-          email: '98073175@qq.com',
-        },
-      ],
+      events: [],
       showEditTask: false,
       form: {
         name: '',
@@ -136,10 +90,35 @@ export default {
           { required: true, message: '任务名不能为空', trigger: 'blur' },
         ],
       },
+      onDeleteTask: () => {
+        router.go(-1);
+      },
+      onEditTask: (task) => {
+        this.task = task;
+      },
+      onBeginTask: () => {
+        this.task.doing = '1';
+      },
+      onPauseTask: () => {
+        this.task.doing = '0';
+      },
+      onFinishTask: (task) => {
+        this.task = task;
+      },
       onSubmit: (content) => {
-        this.$message({
-          message: content,
-          type: 'info',
+        service.commentTask(this.task_id, content).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          this.events.push({
+            name: this.user.name,
+            avatar: this.user.avatar,
+            info: content,
+            date: Date.now(),
+            type: 'comment',
+          });
+        }).catch((err) => {
+          this.$message.error(err.message);
         });
       },
     };
@@ -151,55 +130,90 @@ export default {
         cancelButtonText: '取消',
         type: 'warning',
       }).then(() => {
-        router.push({ name: 'Project', params: { pid: this.$route.params.pid } });
+        service.deleteTask(this.task_id).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          router.go(-1);
+        }).catch((err) => {
+          this.$message.error(err.message);
+        });
       }).catch(() => { });
     },
-    handleOnEdit() {
-      this.$prompt('请输入新的任务名', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        inputValue: this.name,
-        inputPattern: /.+/,
-        inputErrorMessage: '任务名不能为空',
-      }).then(({ value }) => {
-        this.name = value;
-      }).catch(() => { });
-    },
-    handleOnDoing() {
-      this.doing = !this.doing;
-    },
-    allocatingTask(currentUid) {
-      this.uid = currentUid;
-    },
-    handleFinishTask(e) {
-      this.finished = e.target.checked ? Date.now() : null;
+    recoverTask() {
+      service.recoverTask(this.task_id).then((data) => {
+        if (data.error) {
+          throw Error(data.error);
+        }
+        this.task.deleted = '0';
+      }).catch((err) => {
+        this.$message.error(err.message);
+      });
     },
     editTask() {
       this.showEditTask = true;
       this.form = {
-        name: this.name,
-        description: this.description,
+        name: this.task.name,
+        description: this.task.description,
       };
     },
     saveTask() {
       this.$refs.form.validate((valid) => {
         if (valid) {
-          this.name = this.form.name;
-          this.description = this.form.description;
-          this.showEditTask = false;
+          const { name, description } = this.form;
+          service.editTask(this.task_id, name, description).then((data) => {
+            if (data.error) {
+              throw Error(data.error);
+            }
+            this.task.name = name;
+            this.task.description = description;
+            this.showEditTask = false;
+          }).catch((err) => {
+            this.$message.error(err.message);
+          });
         }
+      });
+    },
+    getTaskInfo() {
+      service.getTaskInfo(this.task_id).then((data) => {
+        if (data.error) {
+          throw Error(data.error);
+        }
+        this.task = data.data.task;
+        this.task.taskId = this.$route.params.task_id;
+        this.events = data.data.events;
+      }).catch((err) => {
+        this.$message.error(err.message);
       });
     },
   },
   computed: {
-    task_id: () => this.$route.params.task_id,
-    doingIcon() {
-      return this.doing ? 'el-icon-loading' : 'el-icon-caret-right';
+    task_id() {
+      return this.$route.params.task_id;
     },
+    doingIcon() {
+      return this.task.doing === '1' ? 'el-icon-loading' : 'el-icon-caret-right';
+    },
+    currentUserName() {
+      if (this.task.uid === null) {
+        return '未分配';
+      }
+      const { members } = this;
+      for (let i = 0; i < members.length; ++i) {
+        if (members[i].uid === this.task.uid) {
+          return members[i].name;
+        }
+      }
+      return '';
+    },
+    ...mapState([
+      'user',
+    ]),
   },
   components: {
     EventPanel,
     Comment,
+    Task,
   },
 };
 </script>
@@ -216,5 +230,23 @@ export default {
 .icon-button {
   padding: 0;
   font-size: 1.5em;
+}
+.task-name {
+  color: black;
+  font-size: 1.2em;
+  font-weight: 500;
+  padding: 0;
+}
+.tag {
+  margin-left: 8px;
+  border-radius: 8px;
+
+  &:hover {
+    color: black;
+  }
+}
+.tag-clickable {
+  outline: none;
+  cursor: pointer;
 }
 </style>

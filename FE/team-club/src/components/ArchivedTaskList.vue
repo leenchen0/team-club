@@ -1,12 +1,16 @@
 <template>
   <div>
-    <h2>已完成的任务</h2>
+    <h2>已归档的任务清单</h2>
     <div class="date-container" v-for="date in dateSet" :key="date">
       <span class="date-label">{{ date }}</span>
       <div class="tasks-container">
-        <div style="margin-bottom: 10px;" v-for="task in tasks[date]" :key="task.task_id">
+        <div style="margin-bottom: 10px;" v-for="taskList in taskLists[date]" :key="taskList.task_list_id">
           <i class="el-icon-check finished-icon"></i>
-          <router-link class="task-link" :to="'/team/1'">{{ task.name }}</router-link>
+          <router-link
+            class="task-link"
+            :to="{ name: 'TaskListDetail', params: { pid: $route.params.pid, task_list_id: taskList.task_list_id, path: path } }">
+            {{ taskList.name }}
+          </router-link>
         </div>
       </div>
     </div>
@@ -14,37 +18,63 @@
 </template>
 
 <script>
+import * as service from '../service';
+
 export default {
-  name: 'FinishedTasks',
+  name: 'FinishedTaskLists',
+  created() {
+    this.getArchivedTaskList();
+  },
   data() {
     return {
-      tasks: {
-        '11/11': [
-          {
-            task_id: 1,
-            name: '支持站点输入',
-          },
-          {
-            task_id: 1,
-            name: '支持站点输入',
-          },
-        ],
-        '11/9': [
-          {
-            task_id: 1,
-            name: '支持站点输入',
-          },
-          {
-            task_id: 1,
-            name: '支持站点输入',
-          },
-        ],
-      },
+      unsortedTaskLists: {},
     };
   },
   computed: {
     dateSet() {
-      return Object.keys(this.tasks);
+      return Object.keys(this.taskLists);
+    },
+    taskLists() {
+      const res = {};
+      const { unsortedTaskLists } = this;
+      for (let i = 0; i < unsortedTaskLists.length; ++i) {
+        const date = new Date(unsortedTaskLists[i].archived);
+        const dateStr = `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+        if (!res[dateStr]) {
+          res[dateStr] = [
+            unsortedTaskLists[i],
+          ];
+        } else {
+          res[dateStr].push(unsortedTaskLists[i]);
+        }
+      }
+      return res;
+    },
+    pid() {
+      return this.$route.params.pid;
+    },
+    path() {
+      const oldPath = JSON.parse(JSON.stringify(this.$route.params.path || []));
+      oldPath.push({
+        name: '已归档的任务清单',
+        params: {
+          name: this.$route.name,
+          params: JSON.parse(JSON.stringify(this.$route.params)),
+        },
+      });
+      return oldPath;
+    },
+  },
+  methods: {
+    getArchivedTaskList() {
+      service.getArchivedTaskList(this.pid).then((data) => {
+        if (data.error) {
+          throw Error(data.error);
+        }
+        this.unsortedTaskLists = data.data;
+      }).catch((err) => {
+        this.$message.error(err.message);
+      });
     },
   },
 };
@@ -53,8 +83,8 @@ export default {
 <style lang="scss">
 .date-label {
   float: left;
-  width: 100px;
-  font-size: 1.5em;
+  width: 120px;
+  font-size: 1.2em;
 }
 .date-container {
   padding: 10px 0;

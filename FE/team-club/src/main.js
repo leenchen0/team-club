@@ -7,6 +7,7 @@ import 'mavon-editor/dist/css/index.css';
 import './theme.scss';
 import App from './App';
 import router from './router';
+import store from './store';
 
 Vue.use(ElementUI);
 Vue.use(mavonEditor);
@@ -16,6 +17,7 @@ Vue.config.productionTip = false;
 /* eslint-disable no-new */
 new Vue({
   el: '#app',
+  store,
   router,
   template: '<App/>',
   components: { App },

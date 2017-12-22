@@ -1,8 +1,18 @@
 <template>
   <div>
     <div class="project-header">
-      <h2 class="project-name">项目名</h2>
-      <p class="tips">项目描述</p>
+      <h2 class="project-name">{{ project.name }}</h2>
+      <p class="tips">{{ project.description || '无项目描述' }}</p>
+
+      <div class="project-menu">
+        <project-menu name="成员" :icon="members.length" :link="{ name: 'Member' }" />
+        <div v-if="isMember" class="divider"></div>
+        <project-menu
+          v-if="isMember"
+          name="设置"
+          icon="el-icon-setting"
+          :link="{ name: 'ProjectSettings', params: { path: path } }" />
+      </div>
     </div>
     <div class="project-tasks">
       <div>
@@ -24,14 +34,17 @@
       </div>
       <task
         v-for="task in tasks"
-        v-if="task.taskListId === undefined"
+        v-if="task.taskListId === null"
+        :name="project.name"
         :key="task.taskId"
         :task="task"
+        :members="members"
         :onBeginTask="onBeginTask"
         :onPauseTask="onPauseTask"
         :onEditTask="onEditTask"
         :onDeleteTask="onDeleteTask"
         :onFinishTask="onFinishTask"
+        :onAllocatingTask="onAllocatingTask"
       />
       <div
         v-for="taskList in taskLists"
@@ -44,9 +57,9 @@
           <div style="float: right;">
             <i style="color: #eee;" class="icon-button el-icon-star-on"></i>
             <i style="color: #eee;" class="icon-button el-icon-star-on"></i>
-            <el-button class="icon-button" type="text" icon="el-icon-delete" @click="handleOnDeleteTaskList(taskList)"></el-button>
-            <el-button class="icon-button" type="text" icon="el-icon-edit" @click="handleOnEditTaskList(taskList)"></el-button>
-            <el-button class="icon-button" type="text" icon="el-icon-sold-out" @click="handleOnArchiveTaskList(taskList)"></el-button>
+            <el-button title="删除" class="icon-button" type="text" icon="el-icon-delete" @click="handleOnDeleteTaskList(taskList)"></el-button>
+            <el-button title="编辑" class="icon-button" type="text" icon="el-icon-edit" @click="handleOnEditTaskList(taskList)"></el-button>
+            <el-button title="归档" class="icon-button" type="text" icon="el-icon-sold-out" @click="handleOnArchiveTaskList(taskList)"></el-button>
           </div>
           <router-link
             slot="reference"
@@ -58,22 +71,25 @@
           v-for="task in tasks"
           v-if="task.taskListId === taskList.taskListId"
           :key="task.taskId"
+          :name="project.name"
           :task="task"
+          :members="members"
           :onBeginTask="onBeginTask"
           :onPauseTask="onPauseTask"
           :onEditTask="onEditTask"
           :onDeleteTask="onDeleteTask"
           :onFinishTask="onFinishTask"
+          :onAllocatingTask="onAllocatingTask"
         />
         <el-button type="text" @click="addTask(taskList.taskListId)">添加任务</el-button>
       </div>
       <router-link
-        :to="{ name: 'ProjectFinishedTasks', params: { pid: $route.params.pid } }"
+        :to="{ name: 'ProjectFinishedTasks', params: { pid: $route.params.pid, path: path } }"
       >
         <el-button type="text">已完成任务</el-button>
       </router-link>
       <router-link
-        :to="{ name: 'ArchivedTaskList', params: { pid: $route.params.pid } }"
+        :to="{ name: 'ArchivedTaskList', params: { pid: $route.params.pid, path: path } }"
       >
         <el-button type="text">已归档任务清单</el-button>
       </router-link>
@@ -87,36 +103,53 @@
         v-for="discussion in discussions"
         :key="discussion.did"
         class="discussion-container">
-        <img class="avatar" width="32" :src="discussion.user.avatar" alt="avatar">
-        <small class="username">{{ discussion.user.name }}</small>
-        <router-link
-          :to="{ name: 'DiscussionDetail', params: { pid: $route.params.pid, did: discussion.did } } ">
-          <el-button class="discussion-topic" type="text">{{ discussion.topic }}</el-button>
-        </router-link>
+        <div style="display: flex; align-items: center;">
+          <img class="avatar" width="32" :src="discussion.avatar" alt="avatar">
+          <small class="username">{{ discussion.name }}</small>
+          <router-link
+            :to="{ name: 'DiscussionDetail', params: { pid: $route.params.pid, did: discussion.did, path: path } } ">
+            <el-button class="discussion-topic" type="text">{{ discussion.topic }}</el-button>
+          </router-link>
+        </div>
+        <span class="discussion-date">{{ discussion.date }}</span>
       </div>
     </div>
-    <file-browser />
-    <document-browser />
+    <file-browser :name="project.name" :dirId="project.dirId" />
+    <document-browser :name="project.name" :docDirId="project.docDirId" />
   </div>
 </template>
 
 <script>
+import { mapState } from 'vuex';
 import FileBrowser from './FileBrowser';
 import DocumentBrowser from './DocumentBrowser';
 import Task from './Task';
+import ProjectMenu from './ProjectMenu';
+import * as service from '../service';
 
 export default {
   name: 'Project',
+  props: ['members'],
   components: {
     FileBrowser,
     DocumentBrowser,
     Task,
+    ProjectMenu,
+  },
+  mounted() {
+    this.getProjectInfo();
   },
   data() {
     return {
       tasks: [],
       taskLists: [],
       discussions: [],
+      project: {
+        name: '',
+        dirId: null,
+        docDirId: null,
+        description: 'loading',
+      },
       onDeleteTask: (task) => {
         const i = this.tasks.indexOf(task);
         this.tasks.splice(i, 1);
@@ -127,17 +160,38 @@ export default {
       },
       onBeginTask: (task) => {
         const i = this.tasks.indexOf(task);
-        this.tasks[i].doing = true;
+        this.tasks[i].doing = '1';
       },
       onPauseTask: (task) => {
         const i = this.tasks.indexOf(task);
-        this.tasks[i].doing = false;
+        this.tasks[i].doing = '0';
       },
       onFinishTask: (task) => {
         const i = this.tasks.indexOf(task);
         this.tasks.splice(i, 1);
       },
+      onAllocatingTask: (task, uid) => {
+        const i = this.tasks.indexOf(task);
+        this.tasks[i].uid = uid;
+      },
     };
+  },
+  computed: {
+    ...mapState([
+      'user',
+    ]),
+    isMember() {
+      return this.members.filter(m => m.uid === this.user.uid).length > 0;
+    },
+    path() {
+      return [{
+        name: this.project.name,
+        params: {
+          name: this.$route.name,
+          params: JSON.parse(JSON.stringify(this.$route.params)),
+        },
+      }];
+    },
   },
   methods: {
     addTask(taskListId) {
@@ -147,7 +201,14 @@ export default {
         inputPattern: /.+/,
         inputErrorMessage: '任务名不可为空',
       }).then(({ value }) => {
-        this.tasks.push({ taskId: 1, name: value, taskListId: taskListId, doing: false });
+        service.createTask(this.$route.params.pid, value, taskListId).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          this.tasks.push({ taskId: data.data, uid: this.user.uid, name: value, taskListId: taskListId || null, doing: '0', finished: null });
+        }).catch((err) => {
+          this.$message.error(err.message);
+        });
       }).catch(() => { });
     },
     addTaskList() {
@@ -157,7 +218,14 @@ export default {
         inputPattern: /.+/,
         inputErrorMessage: '清单名不可为空',
       }).then(({ value }) => {
-        this.taskLists.push({ taskListId: 1, name: value });
+        service.createTaskList(this.$route.params.pid, value).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          this.taskLists.push({ taskListId: data.data, name: value });
+        }).catch((err) => {
+          this.$message.error(err.message);
+        });
       }).catch(() => { });
     },
     handleCommand(command) {
@@ -173,8 +241,15 @@ export default {
         cancelButtonText: '取消',
         type: 'warning',
       }).then(() => {
-        const i = this.taskLists.indexOf(taskList);
-        this.taskLists.splice(i, 1);
+        service.deleteTaskList(taskList.taskListId).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          const i = this.taskLists.indexOf(taskList);
+          this.taskLists.splice(i, 1);
+        }).catch((err) => {
+          this.$message.error(err.message);
+        });
       }).catch(() => { });
     },
     handleOnEditTaskList(taskList) {
@@ -185,12 +260,26 @@ export default {
         inputPattern: /.+/,
         inputErrorMessage: '清单名不可为空',
       }).then(({ value }) => {
-        taskList.name = value;
+        service.editTaskListName(taskList.taskListId, value).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          taskList.name = value;
+        }).catch((err) => {
+          this.$message.error(err.message);
+        });
       }).catch(() => { });
     },
     handleOnArchiveTaskList(taskList) {
-      const i = this.taskLists.indexOf(taskList);
-      this.taskLists.splice(i, 1);
+      service.archivedTaskList(taskList.taskListId).then((data) => {
+        if (data.error) {
+          throw Error(data.error);
+        }
+        const i = this.taskLists.indexOf(taskList);
+        this.taskLists.splice(i, 1);
+      }).catch((err) => {
+        this.$message.error(err.message);
+      });
     },
     addDiscusstion() {
       this.$prompt('请输入讨论话题', '提示', {
@@ -199,27 +288,58 @@ export default {
         inputPattern: /.+/,
         inputErrorMessage: '话题不可为空',
       }).then(({ value }) => {
-        this.discussions.push({
-          did: 1,
-          topic: value,
-          description: 'R.T.',
-          user: {
-            uid: 1,
-            name: 'Pencil',
-            avatar: '/static/img/avatar.f7270b8.jpg',
-          },
+        service.createDiscussion(this.$route.params.pid, value).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          this.discussions.push({
+            did: data.data,
+            topic: value,
+            description: 'R.T.',
+            ...this.user,
+          });
+        }).catch((err) => {
+          this.$message.error(err.message);
         });
       }).catch(() => { });
+    },
+    getProjectInfo() {
+      service.getProjectInfo(this.$route.params.pid).then((data) => {
+        if (data.error) {
+          throw Error(data.error);
+        }
+        this.taskLists = data.data.taskLists;
+        this.tasks = data.data.tasks;
+        this.discussions = data.data.discussions;
+        this.project = data.data.project;
+      }).catch((err) => {
+        this.$message.error(err.message);
+      });
     },
   },
 };
 </script>
 
 <style lang="scss">
+.divider {
+    background-color: #a4d0b7;
+    width: 1px;
+    margin: 15px 10px;
+    height: 40px;
+}
 .project-header {
-  padding-bottom: 10px;
+  position: relative;
+  padding-bottom: 20px;
   margin-bottom: 5px;
   border-bottom: 4px solid #b4d0c7;
+  overflow: hidden;
+}
+.project-menu {
+  position: absolute;
+  right: 0px;
+  top: 0px;
+
+  display: flex;
 }
 .project-name {
   margin: 0;
@@ -239,15 +359,10 @@ export default {
   &:hover {
     color: turquoise;
   }
-}
+}uoq
 .icon-button {
   padding: 0;
   font-size: 1.5em;
-}
-.avatar {
-  display: inline-block;
-  margin-top: 3px;
-  border-radius: 50%;
 }
 .username {
   margin-left: 20px;
@@ -257,7 +372,9 @@ export default {
   margin-bottom: 30px;
 }
 .discussion-container {
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding-bottom: 12px;
   margin-bottom: 12px;
   border-bottom: 1px solid #eee;
@@ -268,8 +385,8 @@ export default {
   }
 
   .discussion-date {
-    margin-left: 10px;
-    float: right;
+    margin-right: 20px;
+    font-size: 0.8em;
   }
 }
 </style>

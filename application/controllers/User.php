@@ -2,106 +2,120 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class User extends CI_Controller {
-	public function checklogin(){
-		if(isset($_SESSION['uid'])){
-        	return true;   
-        }else{
-        	return false;
-        }
-	}
-	public function index(){
-		//测试上传表单
-		$this->load->view('upload_form');
-	}
-	/*
-	*登录
-	*/
-	public function login(){
-		$email=$_GET['email'];
-		$password=$_GET['password'];
-		$this->load->model('user_model');
-		$res=$this->user_model->verify_users($email,$password);
-		header('content-type:application/json;charset=utf8');    
-		echo json_encode($res);
-	}
-	/*
-	*登出
-	*/
-	public function logout(){  
-     	$this->session->sess_destroy();
-        $this->load->view('welcome_message');  
+  public function __construct() {
+    parent::__construct();
+
+    header("Access-Control-Allow-Origin: http://localhost:8080");
+    header("Access-Control-Allow-Credentials: true");
+    $this->load->model('user_model', 'user');
+  }
+
+  public function login() {
+    $email = $this->input->post('email');
+    $password = $this->input->post('password');
+
+    $error = $this->user->verify_user($email, $password);
+    if ($error === null) {
+      $res = array(
+        'error' => null,
+        'data' => $this->user->get_info()
+      );
+    } else {
+      $res = array(
+        'error' => $error
+      );
     }
-    /*
-    *修改名字
-    */
-    public function name(){
-    	if($this->checklogin()){
-			$name=$_GET['name'];
-			$this->load->model('user_model');
-			$res=$this->user_model->setname($name);
-			header('content-type:application/json;charset=utf8');    
-			echo json_encode($res);
-		}else{
-			$this->load->view('welcome_message'); 
-		}
+    echo json_encode($res, JSON_UNESCAPED_UNICODE);
+  }
+
+  public function logout() {
+    $this->user->logout();
+    echo json_encode(array('error' => null), JSON_UNESCAPED_UNICODE);
+  }
+
+  public function get_info() {
+    if (!$this->user->check_login())  {
+      echo json_encode(array(
+        'code' => 10011
+      ), JSON_UNESCAPED_UNICODE);
+      return;
     }
-    /*
-    *修改头像
-    */
-    public function avatar(){
-    	if($this->checklogin()){
-			$config['upload_path']      = './static/';
-        	$config['allowed_types']    = 'gif|jpg|png';
-        	$config['max_size']     = 20000;
-        	$config['max_width']        = 2000;
-        	$config['max_height']       = 2000;
-        	 $config['file_name'] = md5(uniqid(microtime()));
-        	$this->load->library('upload', $config);
-        	if (!$this->upload->do_upload('avatar'))
-        	{
-            	$error = array('error' => '修改头像失败');
-           		header('content-type:application/json;charset=utf8');    
-				echo json_encode($error);
-        	}
-        	else
-        	{
-        		$path='/static/'.$this->upload->data('file_name');
-        		$this->load->model('user_model');
-				$res=$this->user_model->setavatar($path);
-           		header('content-type:application/json;charset=utf8');    
-				echo json_encode($res);
-        	}
-        }else{
-        	$this->load->view('welcome_message'); 
-        }
+    $res = array(
+      'error' => null,
+      'data' => $this->user->get_info()
+    );
+    echo json_encode($res, JSON_UNESCAPED_UNICODE);
+  }
+
+  public function avatar() {
+    if (!$this->user->check_login())  {
+      echo json_encode(array(
+        'code' => 10011
+      ), JSON_UNESCAPED_UNICODE);
+      return;
     }
 
-    /*
-    *修改密码
-    */
-    public function password(){
-    	if($this->checklogin()){
-			$oldPassword=$_GET['oldPassword'];
-			$password=$_GET['password'];
-			$this->load->model('user_model');
-			$res=$this->user_model->setpassword($oldPassword,$password);
-			header('content-type:application/json;charset=utf8');    
-			echo json_encode($res);
-		}else{
-			$this->load->view('welcome_message'); 
-		}
+    $file = $_FILES['avatar'];
+    if (!is_uploaded_file($file['tmp_name'])) {
+      return;
     }
-    /*
-    *注册
-    */
-    public function register(){
-    	$name=$this->input->post('name');
-    	$email=$this->input->post('email');
-    	$password=$this->input->post('password');
-    	$this->load->model('user_model');
-    	$res=$this->user_model->register($name,$email,$password);
-    	header('content-type:application/json;charset=utf8');    
-		echo json_encode($res);
+
+    $uploadDir = '/static/avatar/';
+    $uploadFileName = md5_file($file['tmp_name']);
+    if (!$uploadFileName) {
+      $error = $file['error'];
+    } else if (move_uploaded_file($file['tmp_name'], dirname(dirname(dirname(__file__))).$uploadDir.$uploadFileName)) {
+      $path = '/static/avatar/'.$uploadFileName;
+      $error = $this->user->setAvatar($path);
+    } else {
+      $error = '上传头像失败';
     }
+
+    if ($error === null) {
+      $res = array('error' => null, 'data' => $path);
+    } else {
+      $res = array('error' => $error);
+    }
+
+    echo json_encode($res, JSON_UNESCAPED_UNICODE);
+  }
+
+  public function updateInfo() {
+    if (!$this->user->check_login())  {
+      echo json_encode(array(
+        'code' => 10011
+      ), JSON_UNESCAPED_UNICODE);
+      return;
+    }
+
+    $name = $this->input->post('name');
+    $email = $this->input->post('email');
+
+    if (empty($name) || empty($email)) {
+      $error = '参数错误';
+    } else {
+      $error = $this->user->updateInfo($name, $email);
+    }
+
+    echo json_encode(array('error' => $error), JSON_UNESCAPED_UNICODE);
+  }
+
+  public function register() {
+    $name = $this->input->post('name');
+    $email = $this->input->post('email');
+    $password = $this->input->post('password');
+
+    if (empty($name) || empty($email) || empty($password) || strlen($password) < 6) {
+      $error = '参数错误';
+    } else {
+      $error = $this->user->register($name, $email, $password);
+    }
+
+    $res = array(
+      'error' => $error,
+      'data' => $this->user->get_info()
+    );
+    echo json_encode($res, JSON_UNESCAPED_UNICODE);
+  }
 }
 ?>

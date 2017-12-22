@@ -1,6 +1,6 @@
 <template>
   <router-link
-    :to="{ name: 'DocumentBrowser', params: { doc_dir_id: dir.doc_dir_id } }">
+    :to="{ name: 'DocumentBrowser', params: { doc_dir_id: dir.doc_dir_id, path: path } }">
     <div
       class="dir-item"
       align="center">
@@ -16,7 +16,7 @@
 <script>
 export default {
   name: 'DirItem',
-  props: ['dir', 'onDeleteDir'],
+  props: ['dir', 'onDeleteDir', 'path'],
   methods: {
     handleDeleteDir() {
       if (this.onDeleteDir) {

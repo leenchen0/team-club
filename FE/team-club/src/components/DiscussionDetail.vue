@@ -1,14 +1,17 @@
 <template>
-  <div>
+  <div style="position: relative;">
+    <div class="forbid-mask" v-if="discussion.deleted === '1'">
+      <el-button type="warning" @click="recoverDiscussion">该讨论已被删除，点此恢复</el-button>
+    </div>
     <div class="discussion-header">
-      <h3>{{ topic }}</h3>
+      <h3>{{ discussion.topic }}</h3>
       <div style="float: left; width: 60px;" align="center">
-        <img style="float: none;" width="48" class="avatar" src="../assets/avatar.jpg" alt="avatar">
+        <img style="float: none;" width="48" class="avatar" :src="discussion.avatar" alt="avatar">
       </div>
       <div style="margin-left: 70px;">
-        <b>{{ user.name }}</b>
-        <small class="tips">{{ date }}</small>
-        <p style="tips">{{ description }}</p>
+        <b>{{ discussion.name }}</b>
+        <small class="tips">{{ discussion.date }}</small>
+        <p style="tips">{{ discussion.description }}</p>
       </div>
       <div style="margin-left: 70px; margin-top: 15px;">
         <el-button type="primary" size="mini" plain @click="editDiscussion">编辑</el-button>
@@ -30,6 +33,7 @@
       </el-dialog>
     </div>
     <event-panel
+      table="讨论"
       :events="events"
     />
     <comment
@@ -39,42 +43,27 @@
 </template>
 
 <script>
+import { mapState } from 'vuex';
 import router from '../router';
 import EventPanel from './EventPanel';
 import Comment from './Comment';
+import * as service from '../service';
 
 export default {
   name: 'Discussion',
+  created() {
+    this.getDiscussionInfo();
+  },
   data() {
     return {
-      topic: 'Topic',
-      user: {
-        uid: 1,
-        name: '陈林',
+      discussion: {
+        topic: 'Topic',
+        description: 'R.T.',
+        date: '12月7日',
+        name: 'Pencil',
         avatar: '/static/img/avatar.f7270b8.jpg',
       },
-      date: '12月7日',
-      description: 'R.T.',
-      events: [
-        {
-          eid: 1,
-          type: 'comment',
-          info: 'asdasdasd',
-          user: {
-            name: 'Pencil',
-          },
-          date: Date.now(),
-        },
-        {
-          eid: 1,
-          type: 'delete',
-          info: '删除任务',
-          user: {
-            name: 'Pencil',
-          },
-          date: Date.now(),
-        },
-      ],
+      events: [],
       showEditDiscussion: false,
       form: {
         topic: '',
@@ -86,12 +75,30 @@ export default {
         ],
       },
       onSubmit: (content) => {
-        this.$message({
-          message: content,
-          type: 'info',
+        service.commentDiscussion(this.did, content).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          this.events.push({
+            name: this.user.name,
+            avatar: this.user.avatar,
+            type: 'comment',
+            date: Date.now(),
+            info: content,
+          });
+        }).catch((err) => {
+          this.$message.error(err.message);
         });
       },
     };
+  },
+  computed: {
+    ...mapState([
+      'user',
+    ]),
+    did() {
+      return this.$route.params.did;
+    },
   },
   methods: {
     handleOnDelete() {
@@ -100,23 +107,59 @@ export default {
         cancelButtonText: '取消',
         type: 'warning',
       }).then(() => {
-        router.push({ name: 'Project', params: { pid: this.$route.params.pid } });
+        service.deleteDiscussion(this.did).then((data) => {
+          if (data.error) {
+            throw Error(data.error);
+          }
+          router.go(-1);
+        }).catch((err) => {
+          this.$message.error(err.message);
+        });
       }).catch(() => { });
+    },
+    recoverDiscussion() {
+      service.recoverDiscussion(this.did).then((data) => {
+        if (data.error) {
+          throw Error(data.error);
+        }
+        this.discussion.deleted = '0';
+      }).catch((err) => {
+        this.$message.error(err.message);
+      });
     },
     editDiscussion() {
       this.form = {
-        topic: this.topic,
-        description: this.description,
+        topic: this.discussion.topic,
+        description: this.discussion.description,
       };
       this.showEditDiscussion = true;
     },
     saveDiscussion() {
       this.$refs.form.validate((valid) => {
         if (valid) {
-          this.showEditDiscussion = false;
-          this.topic = this.form.topic;
-          this.description = this.form.description;
+          const { topic, description } = this.form;
+          service.editDiscussion(this.did, topic, description).then((data) => {
+            if (data.error) {
+              throw Error(data.error);
+            }
+            this.showEditDiscussion = false;
+            this.discussion.topic = topic;
+            this.discussion.description = description;
+          }).catch((err) => {
+            this.$message.error(err.message);
+          });
         }
+      });
+    },
+    getDiscussionInfo() {
+      service.getDiscussionInfo(this.did).then((data) => {
+        if (data.error) {
+          throw Error(data.error);
+        }
+        this.discussion = data.data.discussion;
+        this.events = data.data.events;
+      }).catch((err) => {
+        this.$message.error(err.message);
       });
     },
   },

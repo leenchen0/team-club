@@ -8,7 +8,7 @@
         v-model="showTeamMenu">
         <h3 slot="reference" class="team-name">{{ currentTeam.name }} <small><i class="el-icon-caret-bottom"></i></small></h3>      
         <ul class="team-menu">
-          <li class="clickable-item">
+          <li class="clickable-item" v-if="user.uid === currentTeam.uid">
             <router-link :to="{ name: 'Settings' }">团队账户</router-link>
           </li>
           <li style="padding-left: 8px; height: 20px;">
@@ -31,9 +31,10 @@
       </el-popover>
       <ul class="nav">
         <li><router-link :to="{ name: 'Projects', params: { tid: $route.params.tid }}">项目</router-link></li>
+        <li><router-link v-if="isTeamMember" :to="{ name: 'Dynamic', params: { tid: $route.params.tid }}">动态</router-link></li>
         <li class="dividing"></li>
         <li><router-link :to="{ name: 'Member', params: { tid: $route.params.tid } }">团队</router-link></li>
-        <li><router-link :to="{ name: 'UserInfo', params: { tid: $route.params.tid, uid: 1 } }">我自己</router-link></li>
+        <li><router-link :to="{ name: 'UserInfo', params: { tid: $route.params.tid, uid: user.uid } }">我自己</router-link></li>
       </ul>
       <el-popover
         placement="bottom"
@@ -41,7 +42,7 @@
         trigger="click"
         v-model="showUserMenu">
         <div slot="reference" class="account-info">
-          <img id="avatar" width="24" src="../assets/avatar.jpg" alt="avatar">
+          <img id="avatar" width="24" height="24" :src="user.avatar" alt="avatar">
           <small><i class="el-icon-caret-bottom" style="color: #888"></i></small>
         </div>
         <ul class="team-menu">
@@ -50,51 +51,66 @@
           </li>
           <li class="part-line"></li>
           <li class="clickable-item">
-            <a href="/logout">退出</a>
+            <a href="#" @click="logout">退出</a>
           </li>
         </ul>
       </el-popover>
     </header>
+    <div
+      v-for="(path, index) in ($route.params.path || [])"
+      :key="index"
+      @click="go(path.params)">
+      <el-card class="path">
+        {{ path.name }}
+      </el-card>
+    </div>
     <el-card class="module-container">
-      <keep-alive>
-        <router-view :teamName="currentTeam.name"></router-view>
-      </keep-alive>
+      <!-- <keep-alive> -->
+      <router-view :teamName="currentTeam.name" :owner="currentTeam.uid" :changeTeamName="updateTeamName" :members="members"></router-view>
+      <!-- </keep-alive> -->
     </el-card>
   </div>
 </template>
 
 <script>
+import { mapState, mapMutations } from 'vuex';
+import router from '../router';
+import * as service from '../service';
+import * as types from '../store/mutation-types';
+
 export default {
   name: 'Team',
+  created() {
+    service.getTeamList().then((data) => {
+      if (data.error) {
+        throw Error(data.error);
+      }
+      this.teamList = data.data;
+    }).catch((err) => {
+      this.$message.error(err.message);
+    });
+    this.getTeamMembers();
+  },
   data() {
     return {
-      teamList: [
-        {
-          tid: 1,
-          name: 'Team Club',
-        },
-        {
-          tid: 2,
-          name: 'Pencil',
-        },
-        {
-          tid: 3,
-          name: 'IoT',
-        },
-      ],
+      teamList: [],
+      members: [],
       showTeamMenu: false,
       showUserMenu: false,
     };
   },
   computed: {
+    ...mapState([
+      'user',
+    ]),
     otherTeamList() {
-      return this.teamList.filter(t => t.tid !== parseInt(this.$route.params.tid, 10));
+      return this.teamList.filter(t => t.tid !== this.$route.params.tid, 10);
     },
     currentTeam() {
       const { teamList } = this;
       for (let i = 0; i < teamList.length; i++) {
         const team = teamList[i];
-        if (team.tid === parseInt(this.$route.params.tid, 10)) {
+        if (team.tid === this.$route.params.tid) {
           return team;
         }
       }
@@ -102,6 +118,44 @@ export default {
         tid: -1,
         name: 'Loading',
       };
+    },
+    isTeamMember() {
+      return this.members.filter(m => m.uid === this.user.uid).length > 0;
+    },
+  },
+  methods: {
+    ...mapMutations({
+      remove_info: types.LOGOUT,
+    }),
+    updateTeamName(teamName) {
+      const { teamList } = this;
+      for (let i = 0; i < teamList.length; i++) {
+        const team = teamList[i];
+        if (team.tid === this.$route.params.tid) {
+          team.name = teamName;
+          this.$set(this.teamList, i, team);
+          break;
+        }
+      }
+    },
+    logout() {
+      service.logout().then(() => {
+        this.remove_info();
+        router.push({ name: 'Login' });
+      });
+    },
+    getTeamMembers() {
+      service.getAcceptedMembers(this.$route.params.tid).then((data) => {
+        if (data.error) {
+          throw Error(data.error);
+        }
+        this.members = data.data;
+      }).catch((err) => {
+        this.$message.error(err.message);
+      });
+    },
+    go(params) {
+      router.push(params);
     },
   },
   watch: {
@@ -168,7 +222,7 @@ header {
 
   .clickable-item {
     a {
-      display: block;    
+      display: block;
       padding: 8px;
     }
 
@@ -185,6 +239,26 @@ header {
     height: 1px;
     background-color: #efefef;
     margin: 3px 0;
+  }
+}
+.path {
+  height: 50px;
+  background-color: #f9f9f9;
+  color: #888;
+  border-bottom: 0;
+  margin: 1em 2em -1em 2em;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #fdfdfd;
+  }
+
+  .el-card__body {
+    display: flex;
+    font-size: 1.2em;
+    align-items: center;
+    padding: 0px 20px;
+    height: 100%;
   }
 }
 </style>

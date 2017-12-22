@@ -1,130 +1,106 @@
 <?php
-class User_model extends CI_Model{
-	function _construct(){
-		parent::_construct();
-		$this->load->database();
-	}
-	public function verify_users($email,$password){
-		$this->load->database();
-		$sql="select uid,name,avatar from User where email='".$email."' and password='".$password."';";
-		$this->db->limit(1);
-		$query=$this->db->query($sql);
-		if($query->num_rows()>0){
-			$row = $query->row(1);
-			$error=null;
-			$data=array(
-				'name'=>$row ->name,
-				'avatar'=>$row->avatar
-			);
-			$result=array(
-				'error'=>null,
-				'data'=>$data
-			);
-			$sessiondata=array(
-					'uid'=>$row->uid,
-					'uname'=>$row->name
-				);
-			$this->session->set_userdata($sessiondata);
-		}
-		else{
-			$error='用户名或者密码错误';
-			$result=array(
-					'error'=>$error,
-					'data'=>null
-				);
-		}
-		return $result;  
-	} 
-	public function setname($name){
-		$id=$this->session->userdata('uid');
-		$sql="update User set name='".$name."' where uid=".$id.";";
-		$query=$this->db->query($sql);
-		if($query>0){
-			$result=array(
-				'error'=>null
-				);
-		}
-		else{
-			$result=array(
-				'error'=>'更新名字失败'
-				);
-		}
-		return $result;
-	}
-	public function setpassword($oldPassword,$password){
-		if($oldPassword==$password){
-			$result=array(
-				'error'=>'新密码和旧密码相同'
-				);
-		}else{
-			$id=$this->session->userdata('uid');
-			$sql="select password from User where uid=".$id;
-			$query=$this->db->query($sql);
-			$row = $query->row(1);
-			if($row->password==$oldPassword){
-				$sql="update User set password='".$password."' where uid=".$id;
-				$query=$this->db->query($sql);
-				if($query>0){
-					$result=array(
-						'error'=>null
-					);
-				}else{
-					$result=array(
-						'error'=>'更新密码失败'
-					);
-				}
-			}else{
-				$result=array(
-					'error'=>'旧密码不对'
-				);
-			}
-		}
-		return $result;
-	}
-	public function setavatar($path){
-		$uid=$this->session->userdata('uid');
-		$sql="update User set avatar='".$path."' where uid=".$uid.";";
-		$query=$this->db->query($sql);
-		if($query>0){
-        	$data = array(
-            	'error' =>null,
-            	'data' => $path
-        	);
-        }else{
-        	$data = array(
-            	'error' =>'更新头像失败'
-        	);
-        }
-        return $data;
-	}
-	public function register($name,$email,$password){
-		$sql="select email from User where email='".$email."';";
-		$query=$this->db->query($sql);
-		if($query->num_rows()>0){
-			$res=array(
-				'error'=>'邮箱已经被注册'
-			);
-			return $res;
-		}
-		$sql="insert into User (name,email,password) values('".$name."','".$email."','".$password."')";
-		$query=$this->db->query($sql);
-		if($query>0){
-			$res=array(
-				'error'=>null
-			);
-			$sessiondata=array(
-				'uid'=>$row->uid,
-				'uname'=>$row->name
-			);
-			$this->session->set_userdata($sessiondata);
-			return $res;
-		}
-		else{
-			$res=array(
-				'error'=>'注册失败'
-			);
-			return $res;
-		}
-	}
+class User_model extends CI_Model {
+  function _construct() {
+    parent::_construct();
+
+    $this->load->database();
+    $this->load->library('session');
+    $this->load->helper('url');
+  }
+
+  public function check_login() {
+    return !!$this->session->user;
+  }
+
+  public function logout() {
+    if (isset($_SESSION['user'])) {
+      unset($_SESSION['user']);
+    }
+  }
+
+  public function get_info() {
+    return $this->session->user;
+  }
+
+  public function getOtherUserInfo($uid) {
+    $sql = "SELECT uid, name, avatar, email FROM User WHERE uid = ?";
+    $query = $this->db->query($sql, array($uid));
+    $user = $query->row();
+    if(isset($user)) {
+      return $user;
+    }
+    return null;
+  }
+
+  public function verify_user($email, $password) {
+    $sql = "SELECT uid, name, avatar, email FROM User WHERE email = ? AND password = ?";
+    $query = $this->db->query($sql, array($email, substr(hash('sha256', $password), -50)));
+
+    $user = $query->row();
+    if(isset($user)) {
+      $this->session->user = array(
+        'uid' => $user->uid,
+        'name' => $user->name,
+        'email' => $user->email,
+        'avatar' => $user->avatar
+      );;
+      return null;
+    }
+    return '用户名或者密码错误';
+  }
+
+  public function setAvatar($path) {
+    $uid = $this->session->user['uid'];
+    $sql = "UPDATE User SET avatar = ? WHERE uid = ?";
+    $query = $this->db->query($sql, array($path, $uid));
+    if($query > 0){
+      // 更新 session 数据
+      $this->session->user['avatar'] = $path;
+      return null;
+    }
+    return '更换头像失败';
+  }
+
+  public function updateInfo($name, $email) {
+    $user = $this->session->user;
+    if ($user['email'] !== $email && !$this->checkEmail($email)) {
+      return '邮箱已被注册';
+    }
+
+    $sql = "UPDATE User SET name = ?, email = ? WHERE uid = ?";
+    $query = $this->db->query($sql, array($name, $email, $user['uid']));
+    if ($query > 0) {
+      // 更新 session 数据
+      $this->session->user['name'] = $name;
+      $this->session->user['email'] = $email;
+      return null;
+    }
+    return '更新名字失败';
+  }
+
+  public function checkEmail($email) {
+    $sql = "SELECT email FROM User WHERE email = ?";
+    $query = $this->db->query($sql, array($email));
+    return $query->num_rows() <= 0;
+  }
+
+  public function register($name, $email, $password) {
+    if (!$this->checkEmail($email)) {
+      return '邮箱已被注册';
+    }
+
+    $sql = "INSERT INTO User (name, email, password) VALUES (?, ?, ?)";
+    $query = $this->db->query($sql, array($name, $email, substr(hash('sha256', $password), -50)));
+    if($query > 0) {
+      $this->session->user = array(
+        'uid' => $this->db->insert_id(),
+        'name' => $name,
+        'email' => $email,
+        'avatar' => '/static/avatar/avatar.jpg'
+      );
+      return null;
+    }
+    return '注册失败';
+  }
 }
 ?>

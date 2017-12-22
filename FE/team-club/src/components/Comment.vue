@@ -1,7 +1,7 @@
 <template>
   <div style="margin-top: 20px">
     <div style="float: left; width: 60px;" align="center">
-      <img width="48" class="avatar" src="../assets/avatar.jpg" alt="avatar">
+      <img width="48" height="48" class="avatar" :src="user.avatar" alt="avatar">
     </div>
     <div style="margin-left: 70px;">
       <el-form ref="form" :model="form" :rules="rules">
@@ -22,6 +22,8 @@
 </template>
 
 <script>
+import { mapState } from 'vuex';
+
 export default {
   name: 'Comment',
   props: ['onSubmit'],
@@ -37,11 +39,15 @@ export default {
       },
     };
   },
+  computed: mapState([
+    'user',
+  ]),
   methods: {
     handleSubmit() {
       this.$refs.form.validate((valid) => {
         if (valid && this.onSubmit) {
           this.onSubmit(this.form.content);
+          this.$refs.form.resetFields();
         }
       });
     },

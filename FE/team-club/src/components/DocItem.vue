@@ -1,6 +1,6 @@
 <template>
   <router-link
-    :to="{ name: 'DocumentEditor', params: { doc_id: doc.doc_id } }">
+    :to="{ name: 'DocumentEditor', params: { doc_id: doc.doc_id, path: path } }">
     <div
       class="doc-item"
       align="center">
@@ -16,7 +16,7 @@
 <script>
 export default {
   name: 'DocItem',
-  props: ['doc', 'onDeleteDoc'],
+  props: ['doc', 'onDeleteDoc', 'path'],
   methods: {
     handleDeleteDoc() {
       if (this.onDeleteDoc) {

@@ -63,7 +63,7 @@
           </div>
           <router-link
             slot="reference"
-            :to="{ name: 'TaskListDetail', params: { pid: $route.params.pid, task_list_id: taskList.taskListId } } ">
+            :to="{ name: 'TaskListDetail', params: { pid: $route.params.pid, task_list_id: taskList.taskListId, path: path } } ">
             <h4 class="task-list-name">{{ taskList.name }}</h4>
           </router-link>
         </el-popover>
@@ -160,19 +160,19 @@ export default {
       },
       onBeginTask: (task) => {
         const i = this.tasks.indexOf(task);
-        this.tasks[i].doing = '1';
+        this.$set(this.tasks, i, task);
       },
       onPauseTask: (task) => {
         const i = this.tasks.indexOf(task);
-        this.tasks[i].doing = '0';
+        this.$set(this.tasks, i, task);
       },
       onFinishTask: (task) => {
         const i = this.tasks.indexOf(task);
         this.tasks.splice(i, 1);
       },
-      onAllocatingTask: (task, uid) => {
+      onAllocatingTask: (task) => {
         const i = this.tasks.indexOf(task);
-        this.tasks[i].uid = uid;
+        this.$set(this.tasks, i, task);
       },
     };
   },

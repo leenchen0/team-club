@@ -12,6 +12,7 @@
         :onEditTask="onEditTask"
         :onDeleteTask="onDeleteTask"
         :onFinishTask="onFinishTask"
+        :onAllocatingTask="onAllocatingTask"
       />
       <p class="tips task-desc">{{ task.description }}</p>
       <div style="margin-left: 25px; margin-top: 15px;" v-if="task.finished === null && task.archived === null">
@@ -104,6 +105,10 @@ export default {
       },
       onFinishTask: (task) => {
         this.task = task;
+      },
+      onAllocatingTask: (task, currentUid) => {
+        this.task.uid = currentUid;
+        this.task.doing = '0';
       },
       onSubmit: (content) => {
         service.commentTask(this.task_id, content).then((data) => {

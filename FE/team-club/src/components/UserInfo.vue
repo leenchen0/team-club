@@ -22,6 +22,7 @@
         :onBeginTask="onBeginTask"
         :onPauseTask="onPauseTask"
         :onFinishTask="onFinishTask"
+        :onAllocatingTask="onAllocatingTask"
         :members="members"
         :task="task"
         :name="user.name"
@@ -66,15 +67,19 @@ export default {
       },
       onBeginTask: (task) => {
         const i = this.tasks.indexOf(task);
-        this.tasks[i].doing = '1';
+        this.$set(this.tasks, i, task);
       },
       onPauseTask: (task) => {
         const i = this.tasks.indexOf(task);
-        this.tasks[i].doing = '0';
+        this.$set(this.tasks, i, task);
       },
       onFinishTask: (task) => {
         const i = this.tasks.indexOf(task);
         this.tasks.splice(i, 1);
+      },
+      onAllocatingTask: (task) => {
+        const i = this.tasks.indexOf(task);
+        this.$set(this.tasks, i, task);
       },
     };
   },

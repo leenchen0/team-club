@@ -182,7 +182,7 @@ class Task_model extends CI_Model {
       return array('error' => '权限不足');
     }
 
-    $sql = "UPDATE Task SET uid = ? WHERE task_id = ?";
+    $sql = "UPDATE Task SET uid = ?, doing = 0 WHERE task_id = ?";
     $query = $this->db->query($sql, array($uid, $taskId));
     return $query > 0 ? null : '分配任务失败';
   }

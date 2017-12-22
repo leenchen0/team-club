@@ -64,6 +64,7 @@
 </template>
 
 <script>
+import { mapState } from 'vuex';
 import * as service from '../service';
 
 export default {
@@ -98,6 +99,7 @@ export default {
       }
       return oldPath;
     },
+    ...mapState(['user']),
   },
   methods: {
     handleOnDelete() {
@@ -141,6 +143,7 @@ export default {
           if (data.error) {
             throw Error(data.error);
           }
+          this.task.doing = '0';
           this.onPauseTask(this.task);
         }).catch((err) => {
           this.$message.error(err.message);
@@ -150,6 +153,8 @@ export default {
           if (data.error) {
             throw Error(data.error);
           }
+          this.task.doing = '1';
+          this.task.uid = this.user.uid;
           this.onBeginTask(this.task);
         }).catch((err) => {
           this.$message.error(err.message);
@@ -161,6 +166,8 @@ export default {
         if (data.error) {
           throw Error(data.error);
         }
+        this.task.uid = currentUid || null;
+        this.task.doing = '0';
         this.onAllocatingTask(this.task, currentUid || null);
       }).catch((err) => {
         this.$message.error(err.message);

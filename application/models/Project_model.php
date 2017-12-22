@@ -66,16 +66,15 @@ class Project_model extends CI_Model {
     return $query->num_rows() > 0;
   }
 
-  /**
-   * 是否有查看项目信息的权限
-   * @param  int $uid 用户id
-   * @param  int $pid 项目id
-   */
-  // public function viewAuth($uid, $pid) {
-  //   $sql = "SELECT private FROM Project "
-  // }
-
   public function getInfo($pid) {
+    $uid = $this->session->user['uid'];
+    // 获取项目信息
+    $sql = "SELECT dir_id as dirId, doc_dir_id as docDirId, name, description FROM Project p, TeamMember tm WHERE pid = ? AND p.tid = tm.tid AND tm.uid = ? AND (private = 0 || (tm.accept = 1))";
+    $query = $this->db->query($sql, array($pid, $uid));
+    $project = $query->row();
+    if (!isset($project)) {
+      return '获取信息失败';
+    }
     // 获取未完成任务列表
     $sql = "SELECT task_id as taskId, task_list_id as taskListId, name, doing, uid, finished FROM Task WHERE pid = ? AND deleted = 0 AND finished is null";
     $query = $this->db->query($sql, array($pid));
@@ -88,10 +87,6 @@ class Project_model extends CI_Model {
     $sql = "SELECT did, u.uid, u.avatar, u.name, topic, `date` FROM Discussion d, User u WHERE d.uid = u.uid AND d.pid = ? AND deleted = 0";
     $query = $this->db->query($sql, array($pid));
     $discussions = $query->result_array();
-    // 获取项目信息
-    $sql = "SELECT dir_id as dirId, doc_dir_id as docDirId, name, description FROM Project WHERE pid = ?";
-    $query = $this->db->query($sql, array($pid));
-    $project = $query->row();
 
     return array(
       'error' => null,

@@ -314,7 +314,7 @@ ELSEIF (NEW.doing <> OLD.doing) THEN
   IF (NEW.doing = 1) THEN
     INSERT INTO TaskEvent (uid, type, task_id) VALUES (NEW.uid, 'begin', NEW.task_id);
   ELSE
-    INSERT INTO TaskEvent (uid, type, task_id) VALUES (NEW.uid, 'pause', NEW.task_id);
+    INSERT INTO TaskEvent (uid, type, task_id) VALUES (OLD.uid, 'pause', NEW.task_id);
   END IF;
 END IF;
 END */;;

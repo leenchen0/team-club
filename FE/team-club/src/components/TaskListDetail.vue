@@ -23,6 +23,7 @@
         :onEditTask="onEditTask"
         :onDeleteTask="onDeleteTask"
         :onFinishTask="onFinishTask"
+        :onAllocatingTask="onAllocatingTask"
       />
       <el-button type="text" @click="addTask">添加新任务</el-button>
     </div>
@@ -102,13 +103,17 @@ export default {
       },
       onBeginTask: (task) => {
         const i = this.tasks.indexOf(task);
-        this.tasks[i].doing = '1';
+        this.$set(this.tasks, i, task);
       },
       onPauseTask: (task) => {
         const i = this.tasks.indexOf(task);
-        this.tasks[i].doing = '0';
+        this.$set(this.tasks, i, task);
       },
       onFinishTask: (task) => {
+        const i = this.tasks.indexOf(task);
+        this.$set(this.tasks, i, task);
+      },
+      onAllocatingTask: (task) => {
         const i = this.tasks.indexOf(task);
         this.$set(this.tasks, i, task);
       },

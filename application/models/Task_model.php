@@ -179,7 +179,7 @@ class Task_model extends CI_Model {
 
   public function allocating($taskId, $uid) {
     if (!$this->checkAuth($taskId)) {
-      return array('error' => '权限不足');
+      return '权限不足';
     }
 
     $sql = "UPDATE Task SET uid = ?, doing = 0 WHERE task_id = ?";

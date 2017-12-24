@@ -64,24 +64,7 @@ export default {
         if (data.error) {
           throw Error(data.error);
         }
-        data.data.discussion.forEach((event) => {
-          event.table = '讨论';
-          event.date = new Date(event.date);
-          const date = this.getDate(event.date);
-          this.events[date] === undefined ?
-          this.events[date] = [event] :
-          this.events[date].push(event);
-        });
-        data.data.task.forEach((event) => {
-          event.table = '任务';
-          event.date = new Date(event.date);
-          const date = this.getDate(event.date);
-          this.events[date] === undefined ?
-          this.events[date] = [event] :
-          this.events[date].push(event);
-        });
-        data.data.taskList.forEach((event) => {
-          event.table = '任务清单';
+        data.data.forEach((event) => {
           event.date = new Date(event.date);
           const date = this.getDate(event.date);
           this.events[date] === undefined ?
@@ -89,8 +72,9 @@ export default {
           this.events[date].push(event);
         });
         this.dateSet = Object.keys(this.events).sort((d1, d2) => d1 < d2);
+        window.events = this.events[this.dateSet[0]];
         this.dateSet.forEach((date) => {
-          this.events[date].sort((e1, e2) => e1.date > e2.date);
+          this.events[date].sort((e1, e2) => (e1.date > e2.date ? 1 : -1));
         });
       }).catch((err) => {
         this.$message.error(err.message);
@@ -105,7 +89,16 @@ export default {
     getTime(date) {
       return `${this.addZero(date.getHours())}:${this.addZero(date.getMinutes())}`;
     },
+    getTableName(table) {
+      if (table === 'discussion') {
+        return '讨论';
+      } else if (table === 'task') {
+        return '任务';
+      }
+      return '任务清单';
+    },
     getInfo(type, table) {
+      table = this.getTableName(table);
       if (type === 'create') {
         return `创建了${table}`;
       } else if (type === 'finish') {
@@ -124,6 +117,8 @@ export default {
         return `归档${table}`;
       } else if (type === 'active') {
         return `激活${table}`;
+      } else if (type === 'comment') {
+        return `回复了${table}`;
       }
       return '';
     },

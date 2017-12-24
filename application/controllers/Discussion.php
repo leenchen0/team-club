@@ -98,12 +98,12 @@ class Discussion extends CI_Controller {
     $comment = $this->input->post('comment');
 
     if (!isset($did) || !isset($comment)) {
-      $res = array('error' => '参数错误');
+      $error ='参数错误';
     } else {
-      $res = $this->discussion->comment($did, $comment);
+      $error = $this->discussion->comment($did, $comment);
     }
 
-    echo json_encode($res, JSON_UNESCAPED_UNICODE);
+    echo json_encode(array('error' => $error), JSON_UNESCAPED_UNICODE);
   }
 
   public function edit() {

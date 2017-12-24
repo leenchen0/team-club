@@ -9,17 +9,16 @@ class Task_model extends CI_Model {
   }
 
   public function createTaskList($pid, $name) {
-    if (!$this->project->checkAuth($pid)) {
-      return array('error' => '权限不足');
-    }
-
     $uid = $this->session->user['uid'];
     $sql = "CALL create_task_list(?, ?, ?)";
-    $query = $this->db->query($sql, array($uid, $pid, $name));
-    return array(
-      'error' => null,
-      'data' => $query->row()->tid
-    );
+    $row = $this->db->query($sql, array($uid, $pid, $name))->row();
+    if (isset($row) && $row->tid > 0) {
+      return array(
+        'error' => null,
+        'data' => $row->tid
+      );
+    }
+    return array('error' => '权限不足'); 
   }
 
   public function getTaskListInfo($taskListId) {
@@ -45,110 +44,94 @@ class Task_model extends CI_Model {
   }
 
   public function deleteTaskList($taskListId) {
-    if (!$this->checkTaskListAuth($taskListId)) {
-      return '权限不足';
-    }
-
     $uid = $this->session->user['uid'];
     $sql = "CALL delete_task_list(?, ?)";
-    $this->db->query($sql, array($uid, $taskListId));
-    return null;
+    $row = $this->db->query($sql, array($uid, $taskListId))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
+    }
+    return '权限不足';
   }
 
   public function recoverTaskList($taskListId) {
-    if (!$this->checkTaskListAuth($taskListId)) {
-      return '权限不足';
-    }
-
     $uid = $this->session->user['uid'];
     $sql = "CALL recover_task_list(?, ?)";
-    $this->db->query($sql, array($uid, $taskListId));
-    return null;
+    $row = $this->db->query($sql, array($uid, $taskListId))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
+    }
   }
 
   public function editTaskList($taskListId, $taskListName) {
-    if (!$this->checkTaskListAuth($taskListId)) {
-      return '权限不足';
+    $uid = $this->session->user['uid'];
+    $sql = "CALL edit_taskList(?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $taskListId, $taskListName))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
     }
-
-    $sql = "UPDATE TaskList SET name = ? WHERE task_list_id = ?";
-    $query = $this->db->query($sql, array($taskListName, $taskListId));
-    return $query > 0 ? null : '修改信息失败';
+    return '权限不足';
   }
 
   public function archivedTaskList($taskListId) {
-    if (!$this->checkTaskListAuth($taskListId)) {
-      return '权限不足';
-    }
-
     $uid = $this->session->user['uid'];
-    $sql = "CALL archive_task_list(?, ?)";
-    $this->db->query($sql, array($uid, $taskListId));
-    return null;
+    $sql = "CALL archived_taskList(?, ?)";
+    $row = $this->db->query($sql, array($uid, $taskListId))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
+    }
+    return '权限不足';
   }
 
   public function unArchivedTaskList($taskListId) {
-    if (!$this->checkTaskListAuth($taskListId)) {
-      return '权限不足';
-    }
-
     $uid = $this->session->user['uid'];
     $sql = "CALL active_task_list(?, ?)";
-    $this->db->query($sql, array($uid, $taskListId));
-    return null;
+    $row = $this->db->query($sql, array($uid, $taskListId))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
+    }
+    return '权限不足';
   }
 
   public function create($pid, $taskListId, $name) {
-    if (!$this->project->checkAuth($pid)) {
-      return array('error' => '权限不足');
-    }
-
     $uid = $this->session->user['uid'];
     $sql = "CALL create_task(?, ?, ?, ?)";
-    $query = $this->db->query($sql, array($pid, $taskListId, $name, $uid));
-    $row = $query->row();
-    if (!isset($row)) {
-      return array('error' => '创建失败');
+    $row = $this->db->query($sql, array($pid, $taskListId, $name, $uid))->row();
+    if (isset($row) && $row->taskId > 0) {
+      return array('error' => null, 'data' => $row->taskId);
     }
-    return array('error' => null, 'data' => $row->taskId);
+    return array('error' => '创建失败');
   }
 
   public function delete($taskId) {
-    if (!$this->checkAuth($taskId)) {
-      return array('error' => '权限不足');
-    }
-
     $uid = $this->session->user['uid'];
     $sql = "CALL delete_task(?, ?)";
-    $this->db->query($sql, array($uid, $taskId));
-    return null;
+    $row = $this->db->query($sql, array($uid, $taskId))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
+    }
+    return '权限不足';
   }
 
-  public function recover($taskId) {
-    if (!$this->checkAuth($taskId)) {
-      return array('error' => '权限不足');
-    }
 
+
+  public function recover($taskId) {
     $uid = $this->session->user['uid'];
     $sql = "CALL recover_task(?, ?)";
-    $this->db->query($sql, array($uid, $taskId));
-    return null;
+    $row = $this->db->query($sql, array($uid, $taskId))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
+    }
+    return '权限不足';
   }
 
   public function edit($taskId, $name, $description) {
-    if (!$this->checkAuth($taskId)) {
-      return array('error' => '权限不足');
+    $uid = $this->session->user['uid'];
+    $sql = "CALL edit_task(?, ?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $taskId, $name, $description))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
     }
-
-    if (!isset($description)) {
-      $sql = "UPDATE Task SET name = ? WHERE task_id = ?";
-      $query = $this->db->query($sql, array($name, $taskId));
-    } else {
-      $sql = "UPDATE Task SET name = ?, description = ? WHERE task_id = ?";
-      $query = $this->db->query($sql, array($name, $description, $taskId));
-    }
-
-    return $query > 0 ? null : '更新任务信息失败';
+    return '权限不足';
   }
 
   public function getInfo($taskId) {
@@ -163,7 +146,7 @@ class Task_model extends CI_Model {
       $task->archived = null;
     } else {
       $sql = "SELECT archived FROM TaskList WHERE task_list_id = ?";
-      $query = $this->db->query($sql, array($taskId));
+      $query = $this->db->query($sql, array($task->task_list_id));
       $taskList = $query->row();
       if (!isset($taskList)) {
         return array('error' => '获取信息失败');
@@ -182,99 +165,73 @@ class Task_model extends CI_Model {
   }
 
   public function allocating($taskId, $uid) {
-    if (!$this->checkAuth($taskId)) {
-      return '权限不足';
+    $cu = $this->session->user['uid'];
+    $sql = "CALL allocate_task(?, ?, ?)";
+    $row = $this->db->query($sql, array($cu, $taskId, $uid))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
     }
-
-    $sql = "UPDATE Task SET uid = ?, doing = 0 WHERE task_id = ?";
-    $query = $this->db->query($sql, array($uid, $taskId));
-    return $query > 0 ? null : '分配任务失败';
+    return '权限不足';
   }
 
   public function begin($taskId) {
-    if (!$this->checkAuth($taskId)) {
-      return '权限不足';
-    }
-
     $uid = $this->session->user['uid'];
-    $sql = "UPDATE Task SET uid = ?, doing = 1 WHERE task_id = ?";
-    $query = $this->db->query($sql, array($uid, $taskId));
-    return $query > 0 ? null : '操作失败';
+    $sql = "CALL begin_task(?, ?)";
+    $row = $this->db->query($sql, array($uid, $taskId))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
+    }
+    return '权限不足';
   }
 
   public function pause($taskId) {
-    if (!$this->checkAuth($taskId)) {
-      return '权限不足';
+    $uid = $this->session->user['uid'];
+    $sql = "CALL pause_task(?, ?)";
+    $row = $this->db->query($sql, array($uid, $taskId))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
     }
-
-    $sql = "UPDATE Task SET doing = 0 WHERE task_id = ?";
-    $query = $this->db->query($sql, $taskId);
-    return $query > 0 ? null : '操作失败';
+    return '权限不足';
   }
 
   public function markFinished($taskId) {
-    if (!$this->checkAuth($taskId)) {
-      return '权限不足';
-    }
-
     $uid = $this->session->user['uid'];
-    $sql = "UPDATE Task SET uid = ?, doing = 0, finished = CURRENT_TIMESTAMP WHERE task_id = ?";
-    $query = $this->db->query($sql, array($uid, $taskId));
-    return $query > 0 ? null : '操作失败';
+    $sql = "CALL mark_task_finished(?, ?)";
+    $row = $this->db->query($sql, array($uid, $taskId))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
+    }
+    return '权限不足';
   }
 
   public function markUnfinished($taskId) {
-    if (!$this->checkAuth($taskId)) {
-      return '权限不足';
-    }
-
     $uid = $this->session->user['uid'];
-    $sql = "UPDATE Task SET uid = ?, finished = null WHERE task_id = ?";
-    $query = $this->db->query($sql, array($uid, $taskId));
-    return $query > 0 ? null : '操作失败';
+    $sql = "CALL mark_task_unfinished(?, ?)";
+    $row = $this->db->query($sql, array($uid, $taskId))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
+    }
+    return '权限不足';
   }
 
   public function comment($taskId, $comment) {
-    if (!$this->checkAuth($taskId)) {
-      return array('error' => '权限不足');
-    }
-
     $uid = $this->session->user['uid'];
-    $sql = "INSERT INTO TaskEvent (uid, type, info, task_id) VALUES (?, 'comment', ?, ?)";
-    $query = $this->db->query($sql, array($uid, $comment, $taskId));
-    return $query > 0 ? array('error' => null, 'data' => $this->db->insert_id()) : array('error' => '评论失败');
+    $sql = "CALL comment_task(?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $taskId, $comment))->row();
+    if (isset($row) && $row->res === '1') {
+      return array('error' => null);
+    }
+    return array('error' => '评论失败');
   }
 
   public function commentTaskList($taskListId, $comment) {
-    if (!$this->checkTaskListAuth($taskListId)) {
-      return array('error' => '权限不足');
+    $uid = $this->session->user['uid'];
+    $sql = "CALL comment_taskList(?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $taskListId, $comment))->row();
+    if (isset($row) && $row->res === '1') {
+      return array('error' => null);
     }
-
-    $uid = $this->session->user['uid'];
-    $sql = "INSERT INTO TaskListEvent (uid, type, info, task_list_id) VALUES (?, 'comment', ?, ?)";
-    $query = $this->db->query($sql, array($uid, $comment, $taskListId));
-    return $query > 0 ? array('error' => null, 'data' => $this->db->insert_id()) : array('error' => '评论失败');
-  }
-
-  public function checkAuth($taskId) {
-    $uid = $this->session->user['uid'];
-    $sql = "CALL check_task_auth(?, ?)";
-    $query = $this->db->query($sql, array($uid, $taskId));
-    $row = $query->row();
-    // 调用存储过程后需要重新连接数据库才可以执行其他语句
-    $this->db->close();
-    $this->db->initialize();
-    if (!isset($row) || $row->auth === '0') {
-      return false;
-    }
-    return true;
-  }
-
-  public function checkTaskListAuth($taskListId) {
-    $uid = $this->session->user['uid'];
-    $sql = "SELECT * FROM TaskList t, Project p, TeamMember tm WHERE t.task_list_id = ? AND t.pid = p.pid AND p.tid = tm.tid AND tm.uid = ? AND tm.accept = 1";
-    $query = $this->db->query($sql, array($taskListId, $uid));
-    return $query->num_rows() > 0;
+    return array('error' => '评论失败');
   }
 }
 ?>

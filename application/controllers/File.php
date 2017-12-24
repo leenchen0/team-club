@@ -35,6 +35,10 @@ class File extends CI_Controller {
     } else if (move_uploaded_file($file['tmp_name'], dirname(dirname(dirname(__file__))).$uploadDir.$uploadFileName)) {
       $path = '/static/file/'.$uploadFileName;
       $res = $this->file->saveFile($dirId, $path, $file['name'], $file['size']);
+      // 保存文件失败则同时删除磁盘上的文件
+      if ($res['error']) {
+        unlink(dirname(dirname(dirname(__file__))).$uploadDir.$uploadFileName);
+      }
     } else {
       $res = array('error' => '上传头像失败');
     }

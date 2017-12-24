@@ -10,60 +10,42 @@ class Project_model extends CI_Model {
 
   public function setIcon($pid, $icon) {
     $uid = $this->session->user['uid'];
-    if (!$this->checkAuth($uid)) {
-      return '权限不足';
-    }
-
-    $sql = "UPDATE Project SET icon = ? WHERE pid = ?";
-    $query = $this->db->query($sql, array($icon, $pid));
-    if ($query > 0) {
+    $sql = "CALL set_icon(?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $pid, $icon))->row();
+    if (isset($row) && $row->res === '1') {
       return null;
     }
-    return '更新失败';
+    return '权限不足';
   }
 
   public function setColor($pid, $color) {
-    if (!$this->checkAuth($pid)) {
-      return '权限不足';
-    }
-
-    $sql = "UPDATE Project SET color = ? WHERE pid = ?";
-    $query = $this->db->query($sql, array($color, $pid));
-    if ($query > 0) {
+    $uid = $this->session->user['uid'];
+    $sql = "CALL set_color(?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $pid, $color))->row();
+    if (isset($row) && $row->res === '1') {
       return null;
     }
-    return '更新失败';
+    return '权限不足';
   }
 
   public function getSettingInfo($pid) {
-    if (!$this->checkAuth($pid)) {
-      return array('error' => '权限不足');
-    }
-
-    $sql = "SELECT name, description, `private` as isPrivate FROM Project WHERE pid = ?";
-    $query = $this->db->query($sql, array($pid));
-    $project = $query->row();
-    if (isset($project)) {
-      return array('error' => null, 'data' => $project);
+    $uid = $this->session->user['uid'];
+    $sql = "CALL get_project_setting_info(?, ?)";
+    $row = $this->db->query($sql, array($uid, $pid))->row();
+    if (isset($row)) {
+        return array('error' => null, 'data' => $row);
     }
     return array('error' => '获取信息失败');
   }
 
   public function saveSettingInfo($pid, $isPrivate, $name, $description) {
-    if (!$this->checkAuth($pid)) {
-      return array('error' => '权限不足');
-    }
-
-    $sql = "UPDATE Project SET private = ?, name = ?, description = ? WHERE pid = ?";
-    $query = $this->db->query($sql, array($isPrivate, $name, $description, $pid));
-    return $query > 0 ? null : '保存失败';
-  }
-
-  public function checkAuth($pid) {
     $uid = $this->session->user['uid'];
-    $sql = "SELECT * FROM Project p, TeamMember tm WHERE p.pid = ? AND p.tid = tm.tid AND tm.uid = ? AND tm.accept = 1";
-    $query = $this->db->query($sql, array($pid, $uid));
-    return $query->num_rows() > 0;
+    $sql = "CALL save_project_setting_info(?, ?, ?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $pid, $isPrivate, $name, $description))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
+    }
+    return '权限不足';
   }
 
   public function getInfo($pid) {
@@ -108,22 +90,23 @@ class Project_model extends CI_Model {
   }
 
   public function archivedTaskList($pid) {
-    if (!$this->checkAuth($pid)) {
-      return array('error' => '权限不足');
-    }
-
-    $sql = "SELECT task_list_id, name, archived FROM TaskList WHERE pid = ? AND deleted = 0 AND archived is not null";
-    $query = $this->db->query($sql, array($pid));
+    $uid = $this->session->user['uid'];
+    $sql = "CALL get_archived_taskList(?, ?)";
+    $query = $this->db->query($sql, array($uid, $pid));
     return array('error' => null, 'data' => $query->result_array());
   }
 
   public function finishedTasks($pid) {
-    if (!$this->checkAuth($pid)) {
-      return array('error' => '权限不足');
-    }
-
-    $sql = "SELECT task_id, name, finished FROM Task WHERE pid = ? AND deleted = 0 AND finished is not null";
-    $query = $this->db->query($sql, array($pid));
+    $uid = $this->session->user['uid'];
+    $sql = "CALL get_finished_tasks(?, ?)";
+    $query = $this->db->query($sql, array($uid, $pid));
     return array('error' => null, 'data' => $query->result_array());
+  }
+
+  public function checkAuth($pid) {
+    $uid = $this->session->user['uid'];
+    $sql = "SELECT * FROM Project p, TeamMember tm WHERE p.pid = ? AND p.tid = tm.tid AND tm.uid = ? AND tm.accept = 1";
+    $query = $this->db->query($sql, array($pid, $uid));
+    return $query->num_rows() > 0;
   }
 }

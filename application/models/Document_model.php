@@ -7,29 +7,23 @@ class Document_model extends CI_Model {
   }
 
   public function create($dirId, $docName) {
-    if (!$this->checkAuth($dirId)) {
-      return array('error' => '权限不足');
+    $uid = $this->session->user['uid'];
+    $sql = "CALL create_doc(?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $dirId, $docName))->row();
+    if (isset($row) && $row->docId > 0) {
+      return array('error' => null, 'data' => $row->docId);
     }
-
-    $sql = "INSERT INTO Document (doc_dir_id, name, content) VALUES (?, ?, '')";
-    $query = $this->db->query($sql, array($dirId, $docName));
-    if ($query > 0) {
-      return array('error' => null, 'data' => $this->db->insert_id());
-    }
-    return array('error' => '创建文件失败');
+    return array('error' => '权限不足');
   }
 
   public function editDoc($docId, $docName) {
-    if (!$this->checkDocAuth($docId)) {
-      return '权限不足';
-    }
-
-    $sql = "UPDATE Document SET name = ? WHERE doc_id = ?";
-    $query = $this->db->query($sql, array($docName, $docId));
-    if ($query > 0) {
+    $uid = $this->session->user['uid'];
+    $sql = "CALL edit_doc(?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $docId, $docName))->row();
+    if (isset($row) && $row->res === '1') {
       return null;
     }
-    return '保存文档失败';
+    return '权限不足';
   }
 
   public function getDocInfo($docId) {
@@ -47,60 +41,50 @@ class Document_model extends CI_Model {
   }
 
   public function getDocHistory($docId) {
-    if (!$this->checkDocAuth($docId)) {
-      return array('error' => '权限不足');
-    }
-
-    $sql = "SELECT hid, name, `date` FROM DocumentEditHistory d, User u WHERE u.uid = d.uid AND doc_id = ? ORDER BY `date` DESC";
-    $query = $this->db->query($sql, array($docId));
+    $uid = $this->session->user['uid'];
+    $sql = "CALL get_doc_history(?, ?)";
+    $query = $this->db->query($sql, array($uid, $docId));
     return array('error' => null, 'data' => $query->result_array());
   }
 
   public function getHistoryContent($hid) {
-    $sql = "SELECT `date`, content, doc_id FROM DocumentEditHistory d WHERE hid = ?";
-    $query = $this->db->query($sql, array($hid));
-    $row = $query->row();
-    if (!isset($row) || !$this->checkDocAuth($row->doc_id)) {
-      return array('error' => '权限不足');
+    $uid = $this->session->user['uid'];
+    $sql = "CALL get_history_content(?, ?)";
+    $row = $this->db->query($sql, array($uid, $hid))->row();
+    if (isset($row)) {
+      return array('error' => null, 'data' => $row);
     }
-    return array('error' => null, 'data' => $row);
+    return array('error' => '权限不足');
   }
 
   public function saveDoc($docId, $content) {
-    if (!$this->checkDocAuth($docId)) {
-      return '权限不足';
-    }
-
     $uid = $this->session->user['uid'];
     $sql = "CALL update_document(?, ?, ?)";
-    $this->db->query($sql, array($uid, $docId, $content));
-    return null;
+    $row = $this->db->query($sql, array($uid, $docId, $content))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
+    }
+    return '权限不足';
   }
 
   public function deleteDoc($docId) {
-    if (!$this->checkDocAuth($docId)) {
-      return '权限不足';
-    }
-
-    $sql = "DELETE FROM Document WHERE doc_id = ?";
-    $query = $this->db->query($sql, array($docId));
-    if ($query > 0) {
+    $uid = $this->session->user['uid'];
+    $sql = "CALL delete_document(?, ?)";
+    $row = $this->db->query($sql, array($uid, $docId))->row();
+    if (isset($row) && $row->res === '1') {
       return null;
     }
-    return '删除失败';
+    return '权限不足';
   }
 
   public function createDir($parent, $dirName) {
-    if (!$this->checkAuth($parent)) {
-      return array('error' => '权限不足');
+    $uid = $this->session->user['uid'];
+    $sql = "CALL create_doc_dir(?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $parent, $dirName))->row();
+    if (isset($row) && $row->dirId > 0) {
+      return array('error' => null, 'data' => $row->dirId);
     }
-
-    $sql = "INSERT INTO DocumentDir (parent, name) VALUES (?, ?)";
-    $query = $this->db->query($sql, array($parent, $dirName));
-    if ($query > 0) {
-      return array('error' => null, 'data' => $this->db->insert_id());
-    }
-    return array('error' => '创建文档夹失败');
+    return array('error' => '权限不足');
   }
 
   public function deleteDir($dirId) {

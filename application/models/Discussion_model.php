@@ -8,42 +8,37 @@ class Discussion_model extends CI_Model {
   }
 
   public function create($pid, $topic) {
-    if (!$this->project->checkAuth($pid)) {
-      return array('error' => '权限不足');
-    }
-
     $uid = $this->session->user['uid'];
-    $sql = "INSERT INTO Discussion (uid, pid, topic) VALUES (?, ?, ?)";
+    $sql = "CALL create_discussion(?, ?, ?)";
     $query = $this->db->query($sql, array($uid, $pid, $topic));
-    if ($query > 0) {
+    $row = $query->row();
+    if (isset($row) && $row->did > 0) {
       return array(
         'error' => null,
-        'data' => $this->db->insert_id()
+        'data' => $row->did
       );
     }
-    return array('error' => '创建讨论失败');
+    return array('error' => '权限不足');
   }
 
   public function delete($did) {
-    if (!$this->checkAuth($did)) {
-      return '权限不足';
-    }
-
     $uid = $this->session->user['uid'];
     $sql = "CALL delete_discussion(?, ?)";
-    $this->db->query($sql, array($uid, $did));
-    return null;
+    $row = $this->db->query($sql, array($uid, $did))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
+    }
+    return '权限不足';
   }
 
   public function recover($did) {
-    if (!$this->checkAuth($did)) {
-      return '权限不足';
-    }
-
     $uid = $this->session->user['uid'];
     $sql = "CALL recover_discussion(?, ?)";
-    $this->db->query($sql, array($uid, $did));
-    return null;
+    $row = $this->db->query($sql, array($uid, $did))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
+    }
+    return '权限不足';
   }
 
   public function getInfo($did) {
@@ -72,25 +67,23 @@ class Discussion_model extends CI_Model {
   }
 
   public function comment($did, $comment) {
-    if (!$this->checkAuth($did)) {
-      return array('error' => '权限不足');
-    }
-
     $uid = $this->session->user['uid'];
     $sql = "CALL comment_discussion(?, ?, ?)";
-    $this->db->query($sql, array($uid, $did, $comment));
-    return array('error' => null);
+    $row = $this->db->query($sql, array($uid, $did, $comment))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
+    }
+    return '权限不足';
   }
 
   public function edit($did, $topic, $description) {
-    if (!$this->checkAuth($did)) {
-      return array('error' => '权限不足');
+    $uid = $this->session->user['uid'];
+    $sql = "CALL edit_discussion(?, ?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $did, $topic, $description))->row();
+    if (isset($row) && $row->res === '1') {
+      return null;
     }
-
-    $sql = "UPDATE Discussion SET topic = ?, description = ? WHERE did = ?";
-    $query = $this->db->query($sql, array($topic, $description, $did));
-
-    return $query > 0 ? null : '更新讨论信息失败';
+    return '权限不足';
   }
 
   public function checkAuth($did) {

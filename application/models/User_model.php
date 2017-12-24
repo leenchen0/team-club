@@ -65,13 +65,9 @@ class User_model extends CI_Model {
 
   public function updateInfo($name, $email) {
     $user = $this->session->user;
-    if ($user['email'] !== $email && !$this->checkEmail($email)) {
-      return '邮箱已被注册';
-    }
-
-    $sql = "UPDATE User SET name = ?, email = ? WHERE uid = ?";
-    $query = $this->db->query($sql, array($name, $email, $user['uid']));
-    if ($query > 0) {
+    $sql = "CALL update_user_info(?, ?, ?)";
+    $row = $this->db->query($sql, array($user['uid'], $name, $email))->row();
+    if (isset($row) && $row->res === '1') {
       // 更新 session 数据
       $user = $this->session->user;
       $user['name'] = $name;
@@ -79,32 +75,22 @@ class User_model extends CI_Model {
       $this->session->user = $user;
       return null;
     }
-    return '更新名字失败';
-  }
-
-  public function checkEmail($email) {
-    $sql = "SELECT email FROM User WHERE email = ?";
-    $query = $this->db->query($sql, array($email));
-    return $query->num_rows() <= 0;
+    return '邮箱已被注册';
   }
 
   public function register($name, $email, $password) {
-    if (!$this->checkEmail($email)) {
-      return '邮箱已被注册';
-    }
-
-    $sql = "INSERT INTO User (name, email, password) VALUES (?, ?, ?)";
-    $query = $this->db->query($sql, array($name, $email, substr(hash('sha256', $password), -50)));
-    if($query > 0) {
+    $sql = "CALL register(?, ?, ?)";
+    $row = $this->db->query($sql, array($name, $email, substr(hash('sha256', $password), -50)))->row();
+    if(isset($row) && $row->uid > 0) {
       $this->session->user = array(
-        'uid' => strval($this->db->insert_id()),
+        'uid' => strval($row->uid),
         'name' => $name,
         'email' => $email,
         'avatar' => '/static/avatar/avatar.jpg'
       );
       return null;
     }
-    return '注册失败';
+    return '邮箱已被注册';
   }
 }
 ?>

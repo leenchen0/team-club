@@ -27,32 +27,10 @@ class Team_model extends CI_Model {
   }
 
   public function getDynamic($tid) {
-    if (!$this->isTeamMember($tid)) {
-      return array('error' => '权限不足');
-    }
-    // DiscussionEvent
-    $sql = "SELECT u.uid, u.name, avatar, type, de.date, de.did as id, info, p.name as pname, p.pid, d.topic as ename
-            FROM DiscussionEvent de, Discussion d, Project p, User u 
-            WHERE de.did = d.did AND d.pid = p.pid AND p.tid = ? AND de.uid = u.uid";
-    $query = $this->db->query($sql, array($tid));
-    $discussionEvents = $query->result_array();
-    // TaskEvent
-    $sql = "SELECT u.uid, u.name, avatar, type, te.date, te.task_id as id, info, p.name as pname, p.pid, t.name as ename
-            FROM TaskEvent te, Task t, Project p, User u 
-            WHERE te.task_id = t.task_id AND t.pid = p.pid AND p.tid = ? AND te.uid = u.uid";
-    $query = $this->db->query($sql, array($tid));
-    $taskEvents = $query->result_array();
-    // TaskListEvent
-    $sql = "SELECT u.uid, u.name, avatar, type, te.date, te.task_list_id as id, info, p.name as pname, p.pid, t.name as ename
-            FROM TaskListEvent te, TaskList t, Project p, User u 
-            WHERE te.type != 'createTask' AND te.task_list_id = t.task_list_id AND t.pid = p.pid AND p.tid = ? AND te.uid = u.uid";
-    $query = $this->db->query($sql, array($tid));
-    $taskListEvents = $query->result_array();
-    return array('error' => null, 'data' => array(
-      'discussion' => $discussionEvents,
-      'task' => $taskEvents,
-      'taskList' => $taskListEvents
-    ));
+    $uid = $this->session->user['uid'];
+    $sql = "CALL get_dynamic(?, ?)";
+    $query = $this->db->query($sql, array($uid, $tid));
+    return array('error' => null, 'data' => $query->result_array());
   }
 
   public function getProjects($tid) {
@@ -65,46 +43,21 @@ class Team_model extends CI_Model {
 
   public function newProject($tid, $name) {
     $uid = $this->session->user['uid'];
-    $sql = "SELECT * FROM TeamMember WHERE uid = ? AND tid = ?";
-    $query = $this->db->query($sql, array($uid, $tid));
-
-    if($query->num_rows() < 1) {
-      return array('error' => '权限不足');
+    $sql = "CALL create_project(?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $tid, $name))->row();
+    if (isset($row) && $row->pid > 0) {
+      return array('error' => null, 'data' => $row->pid);
     }
-
-    // 创建项目文件夹
-    $sql = "INSERT INTO Directory (name) VALUES ('root')";
-    $query = $this->db->query($sql);
-    $dir_id = $this->db->insert_id();
-
-    // 创建项目文档夹
-    $sql = "INSERT INTO DocumentDir (name) VALUES ('root')";
-    $query = $this->db->query($sql);
-    $doc_dir_id = $this->db->insert_id();
-
-    // 创建项目
-    $sql = "INSERT INTO Project (tid, dir_id, doc_dir_id, name) VALUES (?, ?, ?, ?)";
-    $query = $this->db->query($sql, array($tid, $dir_id, $doc_dir_id, $name));
-    if($query > 0) {
-      $id=$this->db->insert_id();
-      return array('error'=>null, 'data'=>$id);
-    }
-    return array('error' => '创建项目失败');
+    return array('error' => '权限不足');
   }
 
   public function getMembers($tid) {
     $uid = $this->session->user['uid'];
-    if ($this->isOwner($uid, $tid)) {
-      $sql = "SELECT u.uid as uid, name, avatar, email, accept FROM TeamMember tm, User u WHERE tm.uid = u.uid AND tm.tid = ?";
-      $query = $this->db->query($sql, array($tid));
-    } else {
-      $sql = "SELECT u.uid as uid, name, avatar, email, accept FROM TeamMember tm, User u WHERE tm.uid = u.uid AND tm.tid = ? AND (accept = 1 OR tm.uid = ?)";
-      $query = $this->db->query($sql, array($tid, $uid));
-    }
-    $data = $query->result_array();
+    $sql = "CALL get_members(?, ?)";
+    $query = $this->db->query($sql, array($uid, $tid));
     return array(
       'error' => null,
-      'data' => $data
+      'data' => $query->result_array()
     );
   }
 
@@ -148,58 +101,42 @@ class Team_model extends CI_Model {
 
   public function changeTeamName($tid, $name){
     $uid = $this->session->user['uid'];
-
-    if (!$this->isOwner($uid, $tid)) {
-      return '权限不足';
-    }
-
-    $sql = "UPDATE Team SET name = ? WHERE tid = ?";
-    $query = $this->db->query($sql, array($name, $tid));
-    if ($query > 0) {
+    $sql = "CALL change_team_name(?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $tid, $name))->row();
+    if (isset($row) && $row->res === '1') {
       return null;
     }
-    return '修改团队名失败';
+    return '权限不足';
   }
 
   public function applyTeam($tid) {
     $uid = $this->session->user['uid'];
-    $sql = "SELECT * FROM TeamMember WHERE tid = ? AND uid = ?";
-    $query = $this->db->query($sql, array($tid, $uid));
-    if ($query->num_rows() > 0) {
-      return '您已在申请列表中或已是团队成员';
-    }
-    $sql = "INSERT INTO TeamMember (uid, tid) VALUES (?, ?)";
-    $query = $this->db->query($sql, array($uid, $tid));
-    if($query > 0) {
+    $sql = "CALL apply_team(?, ?)";
+    $row = $this->db->query($sql, array($uid, $tid))->row();
+    if (isset($row) && $row->res === '1') {
       return null;
     }
-    return '申请失败';
+    return '您已在团队或申请列表中';
   }
 
   public function rejectApply($tid, $uid) {
     $id = $this->session->user['uid'];
-    if (!$this->isOwner($id, $tid)) {
-      return '权限不足';
-    }
-    $sql = "DELETE FROM TeamMember WHERE tid = ? AND uid = ?";
-    $query = $this->db->query($sql, array($tid, $uid));
-    if ($query > 0) {
+    $sql = "CALL reject_apply(?, ?, ?)";
+    $row = $this->db->query($sql, array($id, $tid, $uid))->row();
+    if (isset($row) && $row->res === '1') {
       return null;
     }
-    return '操作失败';
+    return '权限不足';
   }
 
   public function acceptApply($tid, $uid) {
     $id = $this->session->user['uid'];
-    if (!$this->isOwner($id, $tid)) {
-      return '权限不足';
-    }
-    $sql = "UPDATE TeamMember SET accept = 1 WHERE tid = ? AND uid = ?";
-    $query = $this->db->query($sql, array($tid, $uid));
-    if ($query > 0) {
+    $sql = "CALL accept_apply(?, ?, ?)";
+    $row = $this->db->query($sql, array($id, $tid, $uid))->row();
+    if (isset($row) && $row->res === '1') {
       return null;
     }
-    return '操作失败';
+    return '权限不足';
   }
 
 	public function getUnfinishedTask($uid, $tid) {
@@ -212,13 +149,6 @@ class Team_model extends CI_Model {
     $sql = "SELECT t.task_id as taskId, t.name as name, t.finished as finished FROM Task t, Project p WHERE t.pid = p.pid AND p.tid = ? AND t.uid = ? AND t.finished IS NOT NULL AND t.deleted = 0";
     $query = $this->db->query($sql, array($tid, $uid));
     return $query->result_array();
-  }
-
-  public function isTeamMember($tid) {
-    $uid = $this->session->user['uid'];
-    $sql = "SELECT * FROM TeamMember WHERE accept = 1 AND tid = ? AND uid = ?";
-    $query = $this->db->query($sql, array($tid, $uid));
-    return $query->num_rows() > 0;
   }
 }
 ?>

@@ -7,15 +7,12 @@ class File_model extends CI_Model {
   }
 
   public function saveFile($dirId, $path, $name, $size) {
-    if (!$this->checkAuth($dirId)) {
-      return array('error' => '权限不足');
-    }
-
-    $sql = "INSERT INTO File (dir_id, name, `path`, size) VALUES (?, ?, ?, ?)";
-    $query = $this->db->query($sql, array($dirId, $name, $path, $size));
-    if ($query > 0) {
+    $uid = $this->session->user['uid'];
+    $sql = "CALL save_file(?, ?, ?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $dirId, $path, $name, $size))->row();
+    if (isset($row) && $row->fid > 0) {
       return array('error' => null, 'data' => array(
-        'fid' => $this->db->insert_id(),
+        'fid' => $row->fid,
         'path' => $path
       ));
     }
@@ -23,16 +20,13 @@ class File_model extends CI_Model {
   }
 
   public function createDir($parent, $dirName) {
-    if (!$this->checkAuth($parent)) {
-      return array('error' => '权限不足');
+    $uid = $this->session->user['uid'];
+    $sql = "CALL create_dir(?, ?, ?)";
+    $row = $this->db->query($sql, array($uid, $parent, $dirName))->row();
+    if (isset($row) && $row->dirId > 0) {
+      return array('error' => null, 'data' => $row->dirId);
     }
-
-    $sql = "INSERT INTO Directory (parent, name) VALUES (?, ?)";
-    $query = $this->db->query($sql, array($parent, $dirName));
-    if ($query > 0) {
-      return array('error' => null, 'data' => $this->db->insert_id());
-    }
-    return array('error' => '创建文件夹失败');
+    return array('error' => '权限不足');
   }
 
   public function deleteFile($fid) {

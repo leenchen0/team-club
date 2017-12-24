@@ -18,7 +18,7 @@
 
 ## 安装
 
-### 构建前端
+### 构建前端 (可跳过)
 
 ```
 cd FE/team_club
@@ -38,3 +38,10 @@ npm run build
 ### 导入数据库
 
 进入 `mysql` 后，选择数据库，执行 `source db.sql`,创建表结构及触发器、存储过程。
+
+### 给 static 添加权限
+如果上传文件发现 `Permission denied` 问题，需要给 `static` 文件夹添加权限。
+
+```
+chmod -R 777 static/
+```

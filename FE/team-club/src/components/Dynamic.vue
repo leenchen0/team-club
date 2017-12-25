@@ -123,9 +123,9 @@ export default {
       return '';
     },
     getRouterLink(event) {
-      if (event.table === '任务') {
+      if (event.table === 'task') {
         return { name: 'TaskDetail', params: { pid: event.pid, task_id: event.id, path: this.path } };
-      } else if (event.table === '任务清单') {
+      } else if (event.table === 'taskList') {
         return { name: 'TaskListDetail', params: { pid: event.pid, task_list_id: event.id, path: this.path } };
       }
       return { name: 'DiscussionDetail', params: { pid: event.pid, did: event.id, path: this.path } };

@@ -33,6 +33,7 @@ header {
   height: 100%;
 }
 #conntainer {
+  margin: 0 150px;
   width: 1000px;
 }
 a {

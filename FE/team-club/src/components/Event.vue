@@ -51,6 +51,8 @@ export default {
           return 'el-icon-check';
         case 'active':
           return 'el-icon-time';
+        case 'createTask':
+          return 'el-icon-circle-plus';
         default:
           return '';
       }

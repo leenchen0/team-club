@@ -1761,8 +1761,13 @@ DELIMITER ;
 DELIMITER ;;
 CREATE DEFINER=`root`@`localhost` PROCEDURE `recover_task`(u int, t int)
 BEGIN
-UPDATE Task SET deleted = 0 WHERE task_id = t;
-INSERT INTO TaskEvent (uid, type, task_id) VALUES (u, 'reopen', t);
+  DECLARE res boolean DEFAULT false;
+  IF (check_task_auth(u, t)) THEN
+    UPDATE Task SET deleted = 0 WHERE task_id = t;
+    INSERT INTO TaskEvent (uid, type, task_id) VALUES (u, 'reopen', t);
+    SET res = true;
+  END IF;
+  SELECT res;
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;

@@ -112,8 +112,6 @@ class Task_model extends CI_Model {
     return '权限不足';
   }
 
-
-
   public function recover($taskId) {
     $uid = $this->session->user['uid'];
     $sql = "CALL recover_task(?, ?)";

@@ -1075,7 +1075,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `create_dir`(u int, p int, dname int)
+CREATE DEFINER=`root`@`localhost` PROCEDURE `create_dir`(u int, p int, dname varchar(50))
 BEGIN
   DECLARE dirId int DEFAULT -1;
   IF (check_dir_auth(u, p)) THEN
@@ -1147,7 +1147,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `create_doc_dir`(u int, p int, dname int)
+CREATE DEFINER=`root`@`localhost` PROCEDURE `create_doc_dir`(u int, p int, dname varchar(50))
 BEGIN
   DECLARE dirId int DEFAULT -1;
   IF (check_doc_dir_auth(u, p)) THEN
